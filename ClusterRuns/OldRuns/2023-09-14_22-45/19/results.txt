@@ -1,0 +1,5 @@
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['PctChgVix', 'PctChgVol', 'PctChgClCl', 'sumPctChgVix_6', 'sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 75
+Start: 2015 end: 2020
+

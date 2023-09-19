@@ -41,28 +41,40 @@ def extract_data(filename):
     return header, parse_clusters(cluster_data)
 
 def main():
-    root_dir = "."
-    total_results_file = "totalResults.txt"
+    root_dir = os.path.dirname(os.path.abspath(__file__))
 
-    with open(total_results_file, "w") as result_f:
-        for dirpath, dirnames, filenames in os.walk(root_dir):
-            if dirpath.startswith("./2023"):
-                if "results.txt" in filenames:
-                    full_path = os.path.join(dirpath, "results.txt")
-                    header, clusters = extract_data(full_path)
+    for dir_name in os.listdir(root_dir):
+        main_dir_path = os.path.join(root_dir, dir_name)
+        
+        # Check if it's a directory and starts with "2023"
+        if os.path.isdir(main_dir_path) and dir_name.startswith("2023"):
+            total_results_path = os.path.join(main_dir_path, "totalResults.txt")
+            
+            with open(total_results_path, "w") as result_f:
+                # Now, we iterate over subdirectories inside the main directory
+                for sub_dir_name in os.listdir(main_dir_path):
+                    sub_dir_path = os.path.join(main_dir_path, sub_dir_name)
+                    
+                    # Check if it's actually a subdirectory
+                    if os.path.isdir(sub_dir_path):
+                        results_file_path = os.path.join(sub_dir_path, "results.txt")
+                        
+                        # Check if results.txt exists in this subdirectory
+                        if os.path.exists(results_file_path):
+                            header, clusters = extract_data(results_file_path)
 
-                    # Add file path to header and write it to the result file
-                    header_with_path = f"Path: {full_path}\n{header}"
-                    result_f.write(header_with_path)
-                    result_f.write("\n\n")
-
-                    # Write clusters with accuracy > 65% to the result file
-                    for cluster in clusters:
-                        if is_cluster_above_threshold(cluster) and is_test_size_above_threshold(cluster):
-                            result_f.write(cluster["cluster_info"])
-                            result_f.write("\n")
-                            result_f.write("\n".join(cluster["data"]))
+                            # Add file path to header and write it to the result file
+                            header_with_path = f"Path: {results_file_path}\n{header}"
+                            result_f.write(header_with_path)
                             result_f.write("\n\n")
+
+                            # Write clusters with accuracy > 70% to the result file
+                            for cluster in clusters:
+                                if is_cluster_above_threshold(cluster) and is_test_size_above_threshold(cluster):
+                                    result_f.write(cluster["cluster_info"])
+                                    result_f.write("\n")
+                                    result_f.write("\n".join(cluster["data"]))
+                                    result_f.write("\n\n")
 
 if __name__ == "__main__":
     main()

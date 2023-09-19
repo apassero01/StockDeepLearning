@@ -20,24 +20,24 @@ MAX_PARALLEL_PROCESSES = 4
 
 feature_lists = [['PctChgClCl','sumPctChgClCl_2','sumPctChgClCl_3','sumPctChgClCl_4','sumPctChgClCl_5','sumPctChgClCl_6',
                 'PctChgVol','sumPctChgVol_2','sumPctChgVol_3','sumPctChgVol_4','sumPctChgVol_5','sumPctChgVol_6',
-                'PctChgVix','sumPctChgVix_2','sumPctChgVix_3','sumPctChgVix_4','sumPctChgVix_5','sumPctChgVix_6','rsi','Close','Volume']]
-n_steps = [10,15,30,50,75] 
+                'PctChgVix','sumPctChgVix_2','sumPctChgVix_3','sumPctChgVix_4','sumPctChgVix_5','sumPctChgVix_6','Close','Volume']]
+n_steps = [10,20,30]
 
 # cluster_features_lists = [['PctChgClCl','sumPctChgClCl_2','sumPctChgClCl_3','PctChgVol','sumPctChgVol_2','sumPctChgVol_3'],
-#                           ['PctChgVix','PctChgVol','PctChgClCl'],['PctChgClCl','rsi'],
+#                           ['PctChgVix','PctChgVol','PctChgClCl'],
 #                           ['PctChgClCl','sumPctChgClCl_2','sumPctChgClCl_3','sumPctChgClCl_4','PctChgVix','sumPctChgVix_2','sumPctChgVix_3','sumPctChgVix_4','PctChgVol','sumPctChgVol_2','sumPctChgVol_3','sumPctChgVol_4']]
-cluster_features_lists = [['PctChgVix','PctChgVol','PctChgClCl'],['sumPctChgVix_3','sumPctChgVol_3','sumPctChgClCl_3'],['sumPctChgVix_6','sumPctChgVol_6','sumPctChgClCl_6'],['PctChgVix','PctChgVol','PctChgClCl','sumPctChgVix_6','sumPctChgVol_6','sumPctChgClCl_6']]
+cluster_features_lists = [['PctChgVol','PctChgClCl'],['sumPctChgVol_3','sumPctChgClCl_3'],['sumPctChgVol_6','sumPctChgClCl_6'],['PctChgVol','PctChgClCl','sumPctChgVol_6','sumPctChgClCl_6'],['Close','Volume']]
 
 
 # Run names - use more than 1 in list to repeat all tickers with different names
 run_name = datetime.today().strftime('%Y-%m-%d_%H-%M')
 
 # tickerCombinations = [['spy','qqq'],['aapl']]
-tickerCombinations = [['spy','qqq','nvda','aapl']]
+tickerCombinations = [['spy','qqq','nvda','aapl'],['spy']]
 
 # Set end_date to None to use up to the current time (which may screw up last data point if in middle of the day)
 # Also, remember that datetime with no hour will use midnight 00:00:00 for that day
-tstart = 2015
+tstart = 2010
 tend = 2020
 
 

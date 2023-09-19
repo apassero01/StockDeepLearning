@@ -6,11 +6,12 @@ import yfinance as yf
 import plotly.graph_objects as go
 import pandas_ta as pta
 from tslearn.metrics import dtw
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 def train_test_split(dataset, tstart, tend, feature_list):
-    train = dataset.loc[f"{tstart}":f"{tend}", feature_list].values
-    test = dataset.loc[f"{tend+1}":, feature_list].values
+    train = dataset.loc[f"{tstart}":f"{tend}", feature_list]
+    test = dataset.loc[f"{tend+1}":, feature_list]
     
     return train, test
 
@@ -143,8 +144,8 @@ def rolling_sum_window(df,windows, col_string):
             df[col_name] = df[col_string].rolling(roll).sum()
 
 
-            df[col_name] = quantile_pctChg_rescale(df[col_name], quantiles=[.05,.95],
-                                                                  min_max_range=[-1,1])
+            # df[col_name] = quantile_pctChg_rescale(df[col_name], quantiles=[.05,.95],
+            #                                                       min_max_range=[-1,1])
     return df
 
 
@@ -188,9 +189,9 @@ def prepareStockDf(ticker, start):
     stockDf['sumPctChgVix_5'].fillna(0, inplace=True)
     stockDf['sumPctChgVix_6'].fillna(0, inplace=True)
 
-    stockDf.loc[:, "PctChgClCl"] = quantile_pctChg_rescale(stockDf.PctChgClCl,(.1,.9),(-1,1))
-    stockDf.loc[:, "PctChgVix"] = quantile_pctChg_rescale(stockDf.PctChgVix,(.1,.9),(-1,1))
-    stockDf.loc[:, "PctChgVol"] = quantile_pctChg_rescale(stockDf.PctChgVol,(.1,.9),(-1,1))
+    # stockDf.loc[:, "PctChgClCl"] = quantile_pctChg_rescale(stockDf.PctChgClCl,(.1,.9),(-1,1))
+    # stockDf.loc[:, "PctChgVix"] = quantile_pctChg_rescale(stockDf.PctChgVix,(.1,.9),(-1,1))
+    # stockDf.loc[:, "PctChgVol"] = quantile_pctChg_rescale(stockDf.PctChgVol,(.1,.9),(-1,1))
 
 
     stockDf['rsi'] = pta.rsi(stockDf['Close'],length = 20)
@@ -293,3 +294,47 @@ def remove_outliers(X_cluster, X_train, y_train, labels, model, threshold_factor
     labels_filtered = labels[~outlier_mask]
 
     return X_cluster_filtered, X_train_filtered, y_train_filtered, labels_filtered
+
+
+class CustomScaler(BaseEstimator, TransformerMixin):
+    def __init__(self):
+        self.max_abs_trimmed_ = None
+    
+    def fit(self, X, y=None):
+        # Ensure we're working with a copy
+        X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
+        
+        # Assuming X is a DataFrame or numpy array
+        low, high = np.percentile(X_copy, [5, 95], axis=0)  # axis=0 computes percentiles column-wise
+        self.max_abs_trimmed_ = np.maximum(np.abs(low), np.abs(high))
+        return self
+
+    def transform(self, X):
+        # Ensure we're working with a copy
+        X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
+        
+        # Clip data column-wise
+        X_copy = np.clip(X_copy, -self.max_abs_trimmed_, self.max_abs_trimmed_)
+
+        # Scale values between -1 and 1 for each column, maintaining zero
+        pos_mask = X_copy > 0
+        neg_mask = X_copy < 0
+        
+        X_copy[pos_mask] = X_copy[pos_mask] / self.max_abs_trimmed_
+        X_copy[neg_mask] = X_copy[neg_mask] / self.max_abs_trimmed_
+
+        return X_copy
+    
+    def inverse_transform(self, X):
+        # Ensure we're working with a copy
+        X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
+        
+        # If it's a DataFrame, get the numpy array
+        if isinstance(X_copy, pd.DataFrame):
+            X_copy = X_copy.values  # Convert to NumPy array
+
+        X_copy = X_copy * self.max_abs_trimmed_
+
+        return X_copy
+
+

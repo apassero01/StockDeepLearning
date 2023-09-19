@@ -1,0 +1,364 @@
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/0/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['PctChgVol', 'PctChgClCl']
+n_steps: 10
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/1/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['sumPctChgVol_3', 'sumPctChgClCl_3']
+n_steps: 10
+Start: 2010 end: 2020
+
+Cluster Number: 1 
+Accuracy1D 66.0 PredictedRet: -0.22236907 ActRet -0.14145753536109937 
+Accuracy2D 74.0 PredictedRet: -0.2289421 ActRet -0.32647311117934813 
+Accuracy3D 80.0 PredictedRet: -0.15422308 ActRet -0.25301073955991626 
+Accuracy4D 82.0 PredictedRet: -0.11110111 ActRet -0.2617673223514611 
+Accuracy5D 84.0 PredictedRet: -0.07038896 ActRet -0.17429977042650371 
+Accuracy6D 72.0 PredictedRet: 0.0013429932 ActRet -0.10784304156976088 Test set length: 50
+
+Cluster Number: 5 
+Accuracy1D 54.166666666666664 PredictedRet: 0.21564506 ActRet 0.14842428198473104 
+Accuracy2D 70.83333333333334 PredictedRet: 0.2800152 ActRet 0.15341468791013174 
+Accuracy3D 54.166666666666664 PredictedRet: 0.34478578 ActRet 0.2267869529816646 
+Accuracy4D 60.416666666666664 PredictedRet: 0.20427068 ActRet 0.11448917140061186 
+Accuracy5D 62.5 PredictedRet: 0.10789087 ActRet -0.0135015025991084 
+Accuracy6D 52.083333333333336 PredictedRet: 0.109669566 ActRet -0.050334821183133295 Test set length: 48
+
+Cluster Number: 8 
+Accuracy1D 47.27272727272727 PredictedRet: 0.11317009 ActRet -0.10432108759759874 
+Accuracy2D 72.72727272727273 PredictedRet: 0.026104242 ActRet -0.11776854309071788 
+Accuracy3D 52.72727272727272 PredictedRet: -0.013948776 ActRet -0.013740003362371089 
+Accuracy4D 69.0909090909091 PredictedRet: 0.0728487 ActRet -0.023293870705427988 
+Accuracy5D 61.81818181818181 PredictedRet: 0.09638538 ActRet -0.048756544800420853 
+Accuracy6D 58.18181818181818 PredictedRet: 0.122790284 ActRet -0.053394884870663406 Test set length: 55
+
+Cluster Number: 19 
+Accuracy1D 51.78571428571429 PredictedRet: 0.1662153 ActRet -0.01658865039273964 
+Accuracy2D 75.0 PredictedRet: 0.16987383 ActRet 0.04593982035848321 
+Accuracy3D 62.5 PredictedRet: 0.20265487 ActRet 0.034678625108672013 
+Accuracy4D 53.57142857142857 PredictedRet: 0.19298527 ActRet -0.010175677206017182 
+Accuracy5D 51.78571428571429 PredictedRet: 0.29562974 ActRet 0.0023502379591726946 
+Accuracy6D 51.78571428571429 PredictedRet: 0.27521273 ActRet 0.02127374326704815 Test set length: 56
+
+Cluster Number: 31 
+Accuracy1D 45.65217391304348 PredictedRet: -0.0048159305 ActRet 0.05770493247017861 
+Accuracy2D 63.04347826086957 PredictedRet: -0.022382207 ActRet 0.10185291130289804 
+Accuracy3D 71.73913043478261 PredictedRet: 0.042024337 ActRet 0.06947678601480868 
+Accuracy4D 73.91304347826086 PredictedRet: 0.08750904 ActRet 0.05865976565214921 
+Accuracy5D 60.86956521739131 PredictedRet: 0.088491626 ActRet 0.03449120504405952 
+Accuracy6D 58.69565217391305 PredictedRet: 0.08022637 ActRet 0.05068561198094115 Test set length: 46
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/2/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 10
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/3/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['PctChgVol', 'PctChgClCl', 'sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 10
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/4/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['Close', 'Volume']
+n_steps: 10
+Start: 2010 end: 2020
+
+Cluster Number: 19 
+Accuracy1D 44.89795918367347 PredictedRet: 0.07895451 ActRet -0.04012174892864182 
+Accuracy2D 51.02040816326531 PredictedRet: 0.09852952 ActRet -0.00638259335647346 
+Accuracy3D 73.46938775510205 PredictedRet: 0.117210455 ActRet 0.1347566011133761 
+Accuracy4D 53.06122448979592 PredictedRet: 0.038530774 ActRet 0.12576027753017682 
+Accuracy5D 63.26530612244898 PredictedRet: 0.07418492 ActRet 0.032551190773573546 
+Accuracy6D 55.10204081632652 PredictedRet: 0.0540391 ActRet -0.08222353404153465 Test set length: 49
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/5/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['PctChgVol', 'PctChgClCl']
+n_steps: 20
+Start: 2010 end: 2020
+
+Cluster Number: 8 
+Accuracy1D 53.191489361702125 PredictedRet: -0.07267017 ActRet -0.04333781126083963 
+Accuracy2D 68.08510638297872 PredictedRet: -0.12939937 ActRet -0.04131491727575892 
+Accuracy3D 70.2127659574468 PredictedRet: -0.06598125 ActRet 0.017269619561067113 
+Accuracy4D 57.446808510638306 PredictedRet: -0.030994877 ActRet 0.06261505722720842 
+Accuracy5D 55.319148936170215 PredictedRet: -0.021072641 ActRet 0.10297369504133544 
+Accuracy6D 55.319148936170215 PredictedRet: -0.009621473 ActRet 0.1321140220972638 Test set length: 47
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/6/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['sumPctChgVol_3', 'sumPctChgClCl_3']
+n_steps: 20
+Start: 2010 end: 2020
+
+Cluster Number: 8 
+Accuracy1D 53.191489361702125 PredictedRet: -0.05621169 ActRet 0.04102106919817896 
+Accuracy2D 57.446808510638306 PredictedRet: -0.031780735 ActRet 0.1120555002291956 
+Accuracy3D 57.446808510638306 PredictedRet: 0.013505932 ActRet 0.17333455210874 
+Accuracy4D 61.702127659574465 PredictedRet: 0.03983337 ActRet 0.13832301910571437 
+Accuracy5D 70.2127659574468 PredictedRet: 0.052312173 ActRet 0.0816949177963184 
+Accuracy6D 68.08510638297872 PredictedRet: 0.034582514 ActRet 0.10533615824720734 Test set length: 47
+
+Cluster Number: 10 
+Accuracy1D 45.45454545454545 PredictedRet: 0.1500492 ActRet 0.2319331246269364 
+Accuracy2D 70.45454545454545 PredictedRet: 0.19323994 ActRet 0.28058426089700567 
+Accuracy3D 68.18181818181817 PredictedRet: 0.1990718 ActRet 0.2748481239950752 
+Accuracy4D 54.54545454545454 PredictedRet: 0.0801028 ActRet 0.24768450476916967 
+Accuracy5D 59.09090909090909 PredictedRet: 0.01497817 ActRet 0.23269159404123743 
+Accuracy6D 52.27272727272727 PredictedRet: -0.004668359 ActRet 0.21572112590259981 Test set length: 44
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/7/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 20
+Start: 2010 end: 2020
+
+Cluster Number: 23 
+Accuracy1D 72.72727272727273 PredictedRet: 0.17011702 ActRet 0.011229893854735447 
+Accuracy2D 56.81818181818182 PredictedRet: 0.30024445 ActRet 0.08636050515763319 
+Accuracy3D 50.0 PredictedRet: 0.27996942 ActRet 0.2267218381148594 
+Accuracy4D 52.27272727272727 PredictedRet: 0.31982797 ActRet 0.28187676515353516 
+Accuracy5D 54.54545454545454 PredictedRet: 0.2633766 ActRet 0.19068190375862953 
+Accuracy6D 47.72727272727273 PredictedRet: 0.28245342 ActRet 0.10426966169230457 Test set length: 44
+
+Cluster Number: 28 
+Accuracy1D 71.42857142857143 PredictedRet: 0.05784101 ActRet 0.1160696023350912 
+Accuracy2D 64.28571428571429 PredictedRet: -0.021429854 ActRet 0.13645011437079282 
+Accuracy3D 57.14285714285714 PredictedRet: 0.012687462 ActRet 0.10198115878445553 
+Accuracy4D 51.78571428571429 PredictedRet: 0.11185471 ActRet 0.053950935421584155 
+Accuracy5D 42.857142857142854 PredictedRet: 0.13511005 ActRet 0.03149446954891925 
+Accuracy6D 57.14285714285714 PredictedRet: 0.17737056 ActRet 0.020028274024222435 Test set length: 56
+
+Cluster Number: 34 
+Accuracy1D 40.0 PredictedRet: 0.045301337 ActRet 0.1365459927239822 
+Accuracy2D 48.333333333333336 PredictedRet: -0.050363913 ActRet 0.060250616819350324 
+Accuracy3D 70.0 PredictedRet: 0.00297679 ActRet 0.09053797284935935 
+Accuracy4D 66.66666666666666 PredictedRet: 0.0870531 ActRet 0.1013425324690462 
+Accuracy5D 73.33333333333333 PredictedRet: 0.107694305 ActRet 0.1609413582119474 
+Accuracy6D 70.0 PredictedRet: 0.08475385 ActRet 0.20457882197129715 Test set length: 60
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/8/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['PctChgVol', 'PctChgClCl', 'sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 20
+Start: 2010 end: 2020
+
+Cluster Number: 32 
+Accuracy1D 51.21951219512195 PredictedRet: 0.13953355 ActRet -0.1038079682609218 
+Accuracy2D 43.90243902439025 PredictedRet: 0.21467747 ActRet -0.10561673931226435 
+Accuracy3D 39.02439024390244 PredictedRet: 0.26226294 ActRet -0.09314620166889624 
+Accuracy4D 56.09756097560976 PredictedRet: 0.29635563 ActRet -0.014952352417261195 
+Accuracy5D 70.73170731707317 PredictedRet: 0.28858346 ActRet 0.09336316501613942 
+Accuracy6D 68.29268292682927 PredictedRet: 0.31299555 ActRet 0.18369282324736225 Test set length: 41
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/9/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['Close', 'Volume']
+n_steps: 20
+Start: 2010 end: 2020
+
+Cluster Number: 8 
+Accuracy1D 58.06451612903226 PredictedRet: 0.06665 ActRet 0.10624296636509015 
+Accuracy2D 61.29032258064516 PredictedRet: 0.10366957 ActRet 0.16408672372303534 
+Accuracy3D 66.12903225806451 PredictedRet: 0.19454299 ActRet 0.14611311345078748 
+Accuracy4D 69.35483870967742 PredictedRet: 0.2808983 ActRet 0.15722794335831491 
+Accuracy5D 72.58064516129032 PredictedRet: 0.17671312 ActRet 0.2545695269043887 
+Accuracy6D 77.41935483870968 PredictedRet: 0.100245 ActRet 0.30829056971639435 Test set length: 62
+
+Cluster Number: 9 
+Accuracy1D 66.10169491525424 PredictedRet: -0.12225827 ActRet -0.12316416907696659 
+Accuracy2D 71.1864406779661 PredictedRet: 0.06771107 ActRet -0.06982590941902578 
+Accuracy3D 57.6271186440678 PredictedRet: -0.022584384 ActRet -0.04630130005129098 
+Accuracy4D 55.932203389830505 PredictedRet: -0.09430929 ActRet -0.035181983522814125 
+Accuracy5D 50.847457627118644 PredictedRet: -0.022970535 ActRet -0.05359839489096522 
+Accuracy6D 54.23728813559322 PredictedRet: 0.042486742 ActRet -0.03483237729602593 Test set length: 59
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/10/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['PctChgVol', 'PctChgClCl']
+n_steps: 30
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/11/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['sumPctChgVol_3', 'sumPctChgClCl_3']
+n_steps: 30
+Start: 2010 end: 2020
+
+Cluster Number: 10 
+Accuracy1D 41.46341463414634 PredictedRet: 0.039912224 ActRet -0.05365644257731708 
+Accuracy2D 70.73170731707317 PredictedRet: 0.08342811 ActRet -0.01716750691536778 
+Accuracy3D 48.78048780487805 PredictedRet: 0.071020804 ActRet 0.0028168694842000226 
+Accuracy4D 53.65853658536586 PredictedRet: 0.027444223 ActRet 0.06456323169440707 
+Accuracy5D 56.09756097560976 PredictedRet: 0.03780044 ActRet 0.11087856014741472 
+Accuracy6D 46.34146341463415 PredictedRet: 0.039662242 ActRet 0.13205621581489413 Test set length: 41
+
+Cluster Number: 26 
+Accuracy1D 56.52173913043478 PredictedRet: -0.10468934 ActRet 0.04852138919900896 
+Accuracy2D 73.91304347826086 PredictedRet: -0.112611115 ActRet 0.04276780658534472 
+Accuracy3D 56.52173913043478 PredictedRet: -0.054088827 ActRet 0.029097262658593345 
+Accuracy4D 58.69565217391305 PredictedRet: -0.07276713 ActRet 0.011808290654249477 
+Accuracy5D 69.56521739130434 PredictedRet: -0.034771092 ActRet -0.017992716652987583 
+Accuracy6D 50.0 PredictedRet: -0.02227989 ActRet -0.040313257764015835 Test set length: 46
+
+Cluster Number: 29 
+Accuracy1D 70.58823529411765 PredictedRet: -0.0072212555 ActRet 0.08380686728777857 
+Accuracy2D 47.05882352941176 PredictedRet: 0.07179897 ActRet 0.08916630304200716 
+Accuracy3D 56.86274509803921 PredictedRet: 0.11317918 ActRet 0.04472495001920066 
+Accuracy4D 62.745098039215684 PredictedRet: -0.0979428 ActRet -0.002211026236512553 
+Accuracy5D 60.78431372549019 PredictedRet: -0.07121922 ActRet 0.02013213408657199 
+Accuracy6D 52.94117647058824 PredictedRet: -0.095140494 ActRet 0.014485205333235829 Test set length: 51
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/12/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 30
+Start: 2010 end: 2020
+
+Cluster Number: 13 
+Accuracy1D 64.70588235294117 PredictedRet: -0.055306688 ActRet -0.12392214913617505 
+Accuracy2D 70.58823529411765 PredictedRet: -0.15447582 ActRet -0.15515386957719768 
+Accuracy3D 56.86274509803921 PredictedRet: -0.16488357 ActRet -0.08874219530783428 
+Accuracy4D 54.90196078431373 PredictedRet: -0.11876687 ActRet -0.03976355343080571 
+Accuracy5D 52.94117647058824 PredictedRet: -0.09910434 ActRet -0.008927918996908939 
+Accuracy6D 56.86274509803921 PredictedRet: -0.13931093 ActRet 0.020823913137923873 Test set length: 51
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/13/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['PctChgVol', 'PctChgClCl', 'sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 30
+Start: 2010 end: 2020
+
+Cluster Number: 5 
+Accuracy1D 37.704918032786885 PredictedRet: 0.07976645 ActRet -0.04735611578234591 
+Accuracy2D 55.73770491803278 PredictedRet: 0.21432266 ActRet -0.01480237585467296 
+Accuracy3D 57.377049180327866 PredictedRet: 0.27640536 ActRet 0.0009253799550805159 
+Accuracy4D 68.85245901639344 PredictedRet: 0.23952578 ActRet -0.005001626133099272 
+Accuracy5D 75.40983606557377 PredictedRet: 0.18544078 ActRet -0.032492248898238714 
+Accuracy6D 67.21311475409836 PredictedRet: 0.11625712 ActRet -0.03172694286836068 Test set length: 61
+
+Cluster Number: 12 
+Accuracy1D 50.0 PredictedRet: -0.016825203 ActRet 0.15479296058476247 
+Accuracy2D 66.66666666666666 PredictedRet: 0.08563924 ActRet 0.25939491221860556 
+Accuracy3D 73.80952380952381 PredictedRet: 0.22898695 ActRet 0.18402506631504012 
+Accuracy4D 73.80952380952381 PredictedRet: 0.20741168 ActRet 0.14349987233282452 
+Accuracy5D 57.14285714285714 PredictedRet: 0.24827464 ActRet 0.1237823466205905 
+Accuracy6D 57.14285714285714 PredictedRet: 0.22187145 ActRet 0.21152200299494323 Test set length: 42
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/14/results.txt
+Tickers: ['spy', 'qqq', 'nvda', 'aapl']
+cluster_features: ['Close', 'Volume']
+n_steps: 30
+Start: 2010 end: 2020
+
+Cluster Number: 33 
+Accuracy1D 47.91666666666667 PredictedRet: 0.27209887 ActRet 0.04462028379591441 
+Accuracy2D 70.83333333333334 PredictedRet: 0.24232776 ActRet 0.11751251848474191 
+Accuracy3D 79.16666666666666 PredictedRet: 0.3454466 ActRet 0.1936003644849739 
+Accuracy4D 81.25 PredictedRet: 0.3739346 ActRet 0.2505174026156352 
+Accuracy5D 87.5 PredictedRet: 0.38451314 ActRet 0.3373484301822725 
+Accuracy6D 81.25 PredictedRet: 0.3643435 ActRet 0.3367742568323317 Test set length: 48
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/15/results.txt
+Tickers: ['spy']
+cluster_features: ['PctChgVol', 'PctChgClCl']
+n_steps: 10
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/16/results.txt
+Tickers: ['spy']
+cluster_features: ['sumPctChgVol_3', 'sumPctChgClCl_3']
+n_steps: 10
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/17/results.txt
+Tickers: ['spy']
+cluster_features: ['sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 10
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/18/results.txt
+Tickers: ['spy']
+cluster_features: ['PctChgVol', 'PctChgClCl', 'sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 10
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/19/results.txt
+Tickers: ['spy']
+cluster_features: ['Close', 'Volume']
+n_steps: 10
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/20/results.txt
+Tickers: ['spy']
+cluster_features: ['PctChgVol', 'PctChgClCl']
+n_steps: 20
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/21/results.txt
+Tickers: ['spy']
+cluster_features: ['sumPctChgVol_3', 'sumPctChgClCl_3']
+n_steps: 20
+Start: 2010 end: 2020
+
+Cluster Number: 2 
+Accuracy1D 51.06382978723404 PredictedRet: 0.03148126 ActRet 0.041830807208691256 
+Accuracy2D 53.191489361702125 PredictedRet: 0.06994699 ActRet 0.08937196001574405 
+Accuracy3D 59.57446808510638 PredictedRet: 0.035245907 ActRet 0.10454404052051135 
+Accuracy4D 57.446808510638306 PredictedRet: 0.033356942 ActRet 0.11533504777984707 
+Accuracy5D 61.702127659574465 PredictedRet: 0.07937894 ActRet 0.08908411737205779 
+Accuracy6D 70.2127659574468 PredictedRet: 0.12754215 ActRet 0.028319438900378666 Test set length: 47
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/22/results.txt
+Tickers: ['spy']
+cluster_features: ['sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 20
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/23/results.txt
+Tickers: ['spy']
+cluster_features: ['PctChgVol', 'PctChgClCl', 'sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 20
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/24/results.txt
+Tickers: ['spy']
+cluster_features: ['Close', 'Volume']
+n_steps: 20
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/25/results.txt
+Tickers: ['spy']
+cluster_features: ['PctChgVol', 'PctChgClCl']
+n_steps: 30
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/26/results.txt
+Tickers: ['spy']
+cluster_features: ['sumPctChgVol_3', 'sumPctChgClCl_3']
+n_steps: 30
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/27/results.txt
+Tickers: ['spy']
+cluster_features: ['sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 30
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/28/results.txt
+Tickers: ['spy']
+cluster_features: ['PctChgVol', 'PctChgClCl', 'sumPctChgVol_6', 'sumPctChgClCl_6']
+n_steps: 30
+Start: 2010 end: 2020
+
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-17_22-32/29/results.txt
+Tickers: ['spy']
+cluster_features: ['Close', 'Volume']
+n_steps: 30
+Start: 2010 end: 2020
+

@@ -1,0 +1,6 @@
+Path: /home/ajp031/StockDeepLearning/StockDeepLearning/ClusterRuns/2023-09-16_13-49/0/results.txt
+Tickers: ['aapl']
+cluster_features: ['PctChgClCl', 'sumPctChgClCl_2', 'sumPctChgClCl_3']
+n_steps: 15
+Start: 2015 end: 2020
+

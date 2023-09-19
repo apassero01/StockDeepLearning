@@ -1,0 +1,5 @@
+Tickers: ['aapl']
+cluster_features: ['PctChgClCl', 'sumPctChgClCl_2', 'sumPctChgClCl_3', 'sumPctChgClCl_4', 'sumPctChgClCl_5', 'sumPctChgClCl_6']
+n_steps: 30
+Start: 2010 end: 2020
+
