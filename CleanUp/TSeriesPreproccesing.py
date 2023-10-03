@@ -3,9 +3,8 @@ import pandas as pd
 import pandas_ta as ta
 from datetime import datetime, timedelta
 import yfinance as yf
-import tensorflow as tf
-from tensorflow import keras
-from enum import Enum
+from SequencePreprocessing import StockSequenceSet 
+from SequencePreprocessing import ScalingMethod as ScalingMethod
 from sklearn.preprocessing import (
     MinMaxScaler,
     StandardScaler,
@@ -13,28 +12,20 @@ from sklearn.preprocessing import (
     RobustScaler,
 )
 
-class ScalingMethod(Enum):
-    """
-    Enum class to encapsulate the different scaling methods available
-
-    SBS - Sequence by sequence scaling. Each sequence is scaled independently
-    SBSG - Sequence by sequence scale with grouped features. Each sequence is scaled independently but the same scaling is applied to all features
-    QUANT_MINMAX - Quantile min max scaling. Each feature is scaled independently using the quantile min max scaling method
-    UNSCALED - No scaling is applied
-    """
-    SBS = 1
-    SBSG = 2
-    QUANT_MINMAX = 3
-    UNSCALED = 4
 
 class FeatureSet:
     """
     Class that encapsulates a set of features. A set of features is a subset of the columns in a Dateset object. 
     This is helpful for keeping track of different requirements for different groups of features
     """
-    def __init__(self, scaling_method):
+    def __init__(self, scaling_method, scale_range = (-1,1)):
         self.cols = []
         self.scaling_method = scaling_method
+
+        self.scalers = []
+
+        self.range = scale_range
+
 
 
 class DataSet:
@@ -47,6 +38,9 @@ class DataSet:
         self.df = pd.DataFrame()
         self.X_cols = set()
         self.y_cols = set()
+        self.x_feature_sets = [] # list of feature sets
+        self.y_feature_sets = [] # list of feature sets
+
 
         self.created_dataset = False
         self.created_features = False
@@ -88,10 +82,11 @@ class StockDataSet(DataSet):
     def __init__(self, tickers, start, end=None, interval="1d"):
         super().__init__()
         self.tickers = tickers
-        self.start = start
+        self.start = datetime.strptime(start, "%Y-%m-%d")
         self.end = end
+        if end is None:
+            self.end = datetime.today().date()
         self.interval = interval
-        self.feature_sets = [] # list of feature sets
 
     def create_dataset(self):
         """
@@ -124,22 +119,22 @@ class StockDataSet(DataSet):
         for i in range(len(self.dfs)):
             df, feature_set = create_price_vars(self.dfs[i])
             self.dfs[i] = df
-            self.feature_sets.append(feature_set)
-            self.X_cols.update(feature_set.cols)
+        self.x_feature_sets.append(feature_set)
+        self.X_cols.update(feature_set.cols)
 
         # Create trend features
         for i in range(len(self.dfs)):
             df, feature_set = create_trend_vars(self.dfs[i])
             self.dfs[i] = df
-            self.feature_sets.append(feature_set)
-            self.X_cols.update(feature_set.cols)
+        self.x_feature_sets.append(feature_set)
+        self.X_cols.update(feature_set.cols)
 
         # Create percent change variables 
         for i in range(len(self.dfs)):
             df, feature_set = create_pctChg_vars(self.dfs[i])
             self.dfs[i] = df
-            self.feature_sets.append(feature_set)
-            self.X_cols.update(feature_set.cols)
+        self.x_feature_sets.append(feature_set)
+        self.X_cols.update(feature_set.cols)
 
         self.update_total_df()
         self.created_features = True
@@ -155,12 +150,18 @@ class StockDataSet(DataSet):
             return
 
         for i in range(len(self.dfs)):
-            df, cols = add_forward_rolling_sums(self.dfs[i], cols_to_create_targets)
+            df, feature_set = add_forward_rolling_sums(self.dfs[i], cols_to_create_targets)
             self.dfs[i] = df
 
-        self.y_cols.update(cols)
+        self.y_feature_sets.append(feature_set)
+        self.y_cols.update(feature_set.cols)
         self.update_total_df()
         self.created_y_targets = True
+
+    def create_sequence_set(self,n_steps):
+        seq = StockSequenceSet(self.X_cols, self.y_cols, self.dfs, self.tickers,self.start, self.end, self.interval, self.x_feature_sets, self.y_feature_sets,n_steps)
+        
+        return seq
 
 
 def get_stock_data(
@@ -206,7 +207,7 @@ def create_price_vars(df: pd.DataFrame,moving_average_vals = [5,10,20,30,50,100]
     Create price features from the OHLC data.
     """
 
-    feature_set = FeatureSet(ScalingMethod.SBSG)
+    feature_set = FeatureSet(ScalingMethod.SBSG, (-1,1))
 
     feature_set.cols +=["open", "high", "low", "close"]
 
@@ -219,9 +220,9 @@ def create_price_vars(df: pd.DataFrame,moving_average_vals = [5,10,20,30,50,100]
         # df["sma" + str(length)].fillna(method='bfill', inplace=True)
         # df["ema" + str(length)].fillna(method='bfill', inplace=True)
 
-    lag_df = create_lag_vars(df, feature_set.cols, start_lag, end_lag)
-    df = pd.concat([df, lag_df], axis=1)
-    feature_set.cols += lag_df.columns.tolist()
+    # lag_df = create_lag_vars(df, feature_set.cols, start_lag, end_lag)
+    # df = pd.concat([df, lag_df], axis=1)
+    # feature_set.cols += lag_df.columns.tolist()
     
     for col in feature_set.cols:
         df[col] = df[col].fillna(method='bfill')
@@ -235,9 +236,9 @@ def create_trend_vars(df: pd.DataFrame,start_lag = 1, end_lag = 1) -> (pd.DataFr
     feature_set = FeatureSet(ScalingMethod.SBS)
     feature_set.cols += ["volume"]
 
-    lag_df = create_lag_vars(df, feature_set.cols, start_lag, end_lag)
-    df =  pd.concat([df, lag_df], axis=1)
-    feature_set.cols += lag_df.columns.tolist()
+    # lag_df = create_lag_vars(df, feature_set.cols, start_lag, end_lag)
+    # df =  pd.concat([df, lag_df], axis=1)
+    # feature_set.cols += lag_df.columns.tolist()
 
     for col in feature_set.cols:
         # print(col)
@@ -316,10 +317,12 @@ def create_pctChg_vars(
             df[col_name] = df.pctChgclose.rolling(roll).sum()
             feature_set.cols.append(col_name)
 
-    lag_df = create_lag_vars(df, feature_set.cols, start_lag, end_lag)
-    feature_set.cols += lag_df.columns.tolist()
-    df = pd.concat([df, lag_df], axis=1)
-    
+    # print(feature_set.cols)
+    # lag_df = create_lag_vars(df, feature_set.cols, start_lag, end_lag)
+    # feature_set.cols += lag_df.columns.tolist()
+    # df = pd.concat([df, lag_df], axis=1)
+    # print(lag_df.columns.tolist())
+    # print(len(lag_df.columns.tolist()))
 
     for col in feature_set.cols:
         # print(col)
@@ -370,7 +373,7 @@ def create_quarter_cols(df):
     return df
 
 
-def add_forward_rolling_sums(df: pd.DataFrame, columns: list, scaling_method = ScalingMethod.QUANT_MINMAX, start_lag = 1, end_lag = 1) -> (pd.DataFrame, list):
+def add_forward_rolling_sums(df: pd.DataFrame, columns: list, scaling_method = ScalingMethod.QUANT_MINMAX) -> (pd.DataFrame, FeatureSet):
     """
     Add the y val for sumPctChgClCl_X for the next X periods. For example sumPctChgClCl_1
     is the percent change from today's close to tomorrow's close, sumPctChgClCl_2 is the percent
@@ -381,18 +384,25 @@ def add_forward_rolling_sums(df: pd.DataFrame, columns: list, scaling_method = S
     :param columns: a list of column names
     :return: the DataFrame with the new columns added
     """
-    new_columns = []
+    feature_set = FeatureSet(scaling_method)
+
+    max_shift = -1
+
     for col in columns:
         # Extract the number X from the column name
         num_rows_ahead = int(col.split("_")[-1])
 
         # Create a new column name based on X
-        new_col_name = "sumPctChgClCl+" + str(num_rows_ahead)
-        new_columns.append(new_col_name)
+        new_col_name = "sumPctChgclose+" + str(num_rows_ahead)
+        feature_set.cols.append(new_col_name)
         # Shift the column values by -X to fetch the value X rows ahead
         df[new_col_name] = df[col].shift(-num_rows_ahead)
 
-    return df, new_columns
+        max_shift = max(max_shift, num_rows_ahead)
+    
+    df = df.iloc[:-max_shift]
+
+    return df, feature_set
 
 
 def create_lag_vars(
