@@ -248,7 +248,7 @@ def create_trend_vars(df: pd.DataFrame,start_lag = 1, end_lag = 1) -> (pd.DataFr
        
 
 def create_pctChg_vars(
-    df: pd.DataFrame, rolling_sum_windows=(1, 2, 3, 4, 5, 6), scaling_method = ScalingMethod.QUANT_MINMAX, start_lag = 1, end_lag = 1
+    df: pd.DataFrame, rolling_sum_windows=(1, 2, 3, 4, 5, 6), scaling_method = ScalingMethod.SBSG, start_lag = 1, end_lag = 1
 ) -> (pd.DataFrame, FeatureSet):
     """
     Create key target variables from the OHLC processed data.
@@ -275,7 +275,7 @@ def create_pctChg_vars(
     for column in df.columns:
         df['pctChg' + column] = df[column].pct_change() * 100.0
         feature_set.cols.append('pctChg' + column)
-    
+    df.replace([np.inf, -np.inf], 0, inplace=True)
     # % jump from open to high
     df['opHi'] = (df.high - df.open) / df.open * 100.0
     feature_set.cols.append('opHi')
@@ -373,7 +373,7 @@ def create_quarter_cols(df):
     return df
 
 
-def add_forward_rolling_sums(df: pd.DataFrame, columns: list, scaling_method = ScalingMethod.QUANT_MINMAX) -> (pd.DataFrame, FeatureSet):
+def add_forward_rolling_sums(df: pd.DataFrame, columns: list, scaling_method = ScalingMethod.SBS) -> (pd.DataFrame, FeatureSet):
     """
     Add the y val for sumPctChgClCl_X for the next X periods. For example sumPctChgClCl_1
     is the percent change from today's close to tomorrow's close, sumPctChgClCl_2 is the percent

@@ -105,8 +105,8 @@ class ScalerSequencer:
         '''
         #First scale QUANT_MIN__MAX features in dataframe form 
 
-        x_quant_min_max_feature_sets = [feature_set for feature_set in self.x_feature_sets if feature_set.scaling_method == ScalingMethod.QUANT_MINMAX] 
-        y_quant_min_max_feature_sets = [feature_set for feature_set in self.y_feature_sets if feature_set.scaling_method == ScalingMethod.QUANT_MINMAX]       
+        x_quant_min_max_feature_sets = [feature_set for feature_set in self.x_feature_sets if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX.value] 
+        y_quant_min_max_feature_sets = [feature_set for feature_set in self.y_feature_sets if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX.value]       
         if len(x_quant_min_max_feature_sets) > 0:
             self.training_dfs, self.test_dfs = self.scale_quant_min_max(x_quant_min_max_feature_sets, self.training_dfs, self.test_dfs)
         if len(y_quant_min_max_feature_sets) > 0:
@@ -194,8 +194,6 @@ class ScalerSequencer:
                     print(items)
                     
 
-                transformed_data = scaler.transform(training_set[feature_set.cols])
-
                 training_set[feature_set.cols] = scaler.transform(training_set[feature_set.cols])
                 test_set[feature_set.cols] = scaler.transform(test_set[feature_set.cols])
 
@@ -249,7 +247,7 @@ class ScalerSequencer:
             for i in range(X_train.shape[0]):
 
             # for i in range(1):
-                scaler = MinMaxScaler()
+                scaler = MinMaxPercentileScaler()
                 # Extract the sequence
                 sequence = np.copy(X_train[i])
                 
@@ -268,7 +266,7 @@ class ScalerSequencer:
             
             
             for i in range(X_test.shape[0]):
-                scaler = MinMaxScaler()
+                scaler = MinMaxPercentileScaler()
                 # Extract the sequence
                 sequence = np.copy(X_test[i])
                 
@@ -296,19 +294,21 @@ class ScalerSequencer:
 
         y_train = np.copy(y_train)
         y_test = np.copy(y_test)
-        
+        # print(y_train)
         for i,row in enumerate(y_train): 
-            scaler = MinMaxPercentileScaler(feature_set.range)
-            row = scaler.fit_transform(np.copy(row.reshape(-1,1))).ravel()
-            y_train[i] = row 
-            feature_set.scalers.append(scaler)
+            scaler = MinMaxPercentileScaler()
+            # print(row)
+            scaled_row = scaler.fit_transform(np.copy(row.reshape(-1,1))).ravel()
+            # print(scaled_row)
+            y_train[i] = scaled_row 
+            feature_set[0].scalers.append(scaler)
         for i,row in enumerate(y_test):
-            scaler = MinMaxPercentileScaler(feature_set.range)
+            scaler = MinMaxPercentileScaler(percentile=[0,100])
             row = scaler.fit_transform(np.copy(row.reshape(-1,1))).ravel()
             y_test[i] = row 
-            feature_set.scalers.append(scaler)
+            feature_set[0].scalers.append(scaler)
         
-        return y_train, y_test\
+        return y_train, y_test
     
     def get_feature_dict(self):
         return self.X_feature_dict, self.y_feature_dict
