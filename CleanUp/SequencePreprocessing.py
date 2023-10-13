@@ -8,6 +8,39 @@ from enum import Enum
 from copy import deepcopy
 from collections import Counter
 
+class SequenceElement: 
+    def __init__(self,seq_x,seq_y,isTrain : bool, x_feature_dict, y_feature_dict,start_date, end_date,ticker) -> None:
+        self.seq_x = seq_x
+        self.seq_y = seq_y
+
+        self.seq_x_scaled = deepcopy(seq_x)
+        self.seq_y_scaled = deepcopy(seq_y)
+
+        self.isTrain = isTrain
+        self.start_date = start_date
+        self.end_date = end_date
+        self.ticker = ticker
+        self.n_steps = len(seq_x)
+        self.x_feature_dict = x_feature_dict
+        self.y_feature_dict = y_feature_dict
+        self.X_feature_sets = [] 
+        self.y_feature_sets = []
+
+    def create_array(sequence_elements,scaled = True):
+        """
+        Takes a list of sequence elements and returns a 3D array of the sequences
+        """
+        if scaled:
+            X = np.array([sequence_element.seq_x_scaled for sequence_element in sequence_elements])
+            y = np.array([sequence_element.seq_y_scaled for sequence_element in sequence_elements])
+        else:
+            X = np.array([sequence_element.seq_x for sequence_element in sequence_elements])
+            y = np.array([sequence_element.seq_y for sequence_element in sequence_elements])
+        return X,y
+
+
+
+        
 class ScalingMethod(Enum):
     """
     Enum class to encapsulate the different scaling methods available
@@ -24,7 +57,7 @@ class ScalingMethod(Enum):
 
 
 class SequenceSet: 
-    def __init__(self,X_cols, y_cols, dfs, x_feature_sets, y_feature_sets, n_steps = 10) -> None:
+    def __init__(self,X_cols, y_cols, dfs, X_feature_sets, y_feature_sets, n_steps = 10) -> None:
         self.X_cols = X_cols
         self.y_cols = y_cols
         self.dfs = [df.copy() for df in dfs]
@@ -34,7 +67,7 @@ class SequenceSet:
         self.training_dfs = []
         self.test_dfs = [] 
 
-        self.x_feature_sets = x_feature_sets
+        self.X_feature_sets = X_feature_sets
         self.y_feature_sets = y_feature_sets
     
     def set_n_steps(self,n_steps):
@@ -47,12 +80,13 @@ class SequenceSet:
         pass
 
 class StockSequenceSet(SequenceSet):
-    def __init__(self,X_cols, y_cols, dfs, tickers,start,end,interval,x_feature_sets,y_feature_sets,n_steps = 10) -> None:
-        super().__init__(X_cols, y_cols, dfs, x_feature_sets, y_feature_sets, n_steps)
+    def __init__(self,X_cols, y_cols, dfs, tickers,start,end,interval,X_feature_sets,y_feature_sets,n_steps = 10) -> None:
+        super().__init__(X_cols, y_cols, dfs, X_feature_sets, y_feature_sets, n_steps)
         self.tickers = tickers
         self.start = start
         self.end = end
         self.interval = interval
+
 
 
     def train_test_split(self,t_start,t_end,feature_list = None):
@@ -72,8 +106,8 @@ class StockSequenceSet(SequenceSet):
             self.test_dfs.append(test_df)
     
     def scale_seq(self): 
-        scaler = ScalerSequencer(self.x_feature_sets,self.y_feature_sets,self.training_dfs,self.test_dfs,self.X_cols,self.y_cols,self.n_steps)
-        self.X_train, self.X_test, self.y_train, self.y_test, self.X_train_scaled, self.X_test_scaled, self.y_train_scaled, self.y_test_scaled = scaler.scale_and_sequence() 
+        scaler = ScalerSequencer(self.X_feature_sets,self.y_feature_sets,self.training_dfs,self.test_dfs,self.X_cols,self.y_cols,self.n_steps,self.tickers)
+        self.train_seq_elements, self.test_seq_elements = scaler.scale_and_sequence() 
         self.X_feature_dict, self.y_feature_dict = scaler.get_feature_dict()
         
 
@@ -86,10 +120,11 @@ class ScalerSequencer:
     """
     scalingMethods = ["SBS","SBSG","QUANT_MINMAX","UNSCALED"]
 
-    def __init__(self,x_feature_sets,y_feature_sets,training_dfs, test_dfs,X_cols,y_cols, n_steps) -> None:
+    def __init__(self,x_feature_sets,y_feature_sets,training_dfs, test_dfs,X_cols,y_cols, n_steps,tickers) -> None:
         self.x_feature_sets = x_feature_sets
         self.y_feature_sets = y_feature_sets
 
+        self.tickers = tickers
         self.test_dfs = deepcopy(test_dfs)
         self.training_dfs = deepcopy(training_dfs)
 
@@ -113,52 +148,55 @@ class ScalerSequencer:
             self.training_dfs, self.test_dfs = self.scale_quant_min_max(y_quant_min_max_feature_sets, self.training_dfs, self.test_dfs)
 
         #Then create the sequence 
-        self.X_train, self.X_test, self.y_train, self.y_test = self.create_combined_sequence(self.training_dfs,self.test_dfs,self.n_steps)
+        self.train_seq_elements, self.test_seq_elements = self.create_combined_sequence(self.training_dfs,self.test_dfs,self.n_steps,self.tickers)
+        # So each sequence element has a list of feature sets that is the same for each sequence element except they may have different scalers.
+        # For QUANT_MIN_MAX features, the scaling occurs before the sequence is created, so we need to add the already scaled feature sets to the new sequence elements
+        [seq_element.X_feature_sets.extend(x_quant_min_max_feature_sets) for seq_element in self.train_seq_elements]
+        [seq_element.X_feature_sets.extend(x_quant_min_max_feature_sets) for seq_element in self.test_seq_elements]
+        [seq_element.y_feature_sets.extend(y_quant_min_max_feature_sets) for seq_element in self.train_seq_elements]
+        [seq_element.y_feature_sets.extend(y_quant_min_max_feature_sets) for seq_element in self.test_seq_elements]
 
         #Then scale the SBS features in sequence form
         x_sbs_feature_sets = [feature_set for feature_set in self.x_feature_sets if feature_set.scaling_method.value == ScalingMethod.SBS.value]
         if len(x_sbs_feature_sets) > 0:
-            self.X_train_scaled, self.X_test_scaled = self.scale_sbs(x_sbs_feature_sets,self.X_train,self.X_test)
+            self.train_seq_elements, self.test_seq_elements = self.scale_sbs(x_sbs_feature_sets,self.train_seq_elements,self.test_seq_elements)
 
         #Then scale the sbs features in sequence form
         x_sbsg_feature_sets = [feature_set for feature_set in self.x_feature_sets if feature_set.scaling_method.value == ScalingMethod.SBSG.value]
         if len(x_sbsg_feature_sets) > 0:
-            self.X_train_scaled, self.X_test_scaled = self.scale_sbsg(x_sbsg_feature_sets,self.X_train_scaled,self.X_test_scaled)
+            self.train_seq_elements, self.test_seq_elements = self.scale_sbsg(x_sbsg_feature_sets,self.train_seq_elements,self.test_seq_elements)
 
         #Then scale the y features in sequence form
         y_sbs_feature_sets = [feature_set for feature_set in self.y_feature_sets if feature_set.scaling_method.value == ScalingMethod.SBS.value]
         if len(y_sbs_feature_sets) > 0:
-            self.y_train_scaled, self.y_test_scaled = self.y_scale_sbs(y_sbs_feature_sets,self.y_train,self.y_test)
-        else: 
-            self.y_train_scaled = self.y_train
-            self.y_test_scaled = self.y_test
+            self.train_seq_elements, self.test_seq_elements = self.y_scale_sbs(y_sbs_feature_sets,self.train_seq_elements,self.test_seq_elements)
 
-        return self.X_train, self.X_test, self.y_train, self.y_test, self.X_train_scaled, self.X_test_scaled, self.y_train_scaled, self.y_test_scaled
+        return self.train_seq_elements, self.test_seq_elements
 
 
     
-    def create_combined_sequence(self,training_dfs, test_dfs, n_steps):
+    def create_combined_sequence(self,training_dfs, test_dfs, n_steps, ticker):
         '''
         Creates the sequence for each dataframe and concatenates them together
         '''
 
-
-        X_train, X_test = np.empty((0, n_steps, len(self.X_cols))), np.empty((0, n_steps, len(self.X_cols)))
-        y_train, y_test = np.empty((0, len(self.y_cols))), np.empty((0, len(self.y_cols)))
+        #empty 3D arrays
+        train_seq_elements = []
+        test_seq_elements = []
 
         for i in range(len(training_dfs)):
             training_set = training_dfs[i]
             test_set = test_dfs[i]
 
-            X_train_i, y_train_i, self.X_feature_dict, self.y_feature_dict = create_sequence(training_set, self.X_cols, self.y_cols, n_steps)
-            X_test_i, y_test_i, self.X_feature_dict, self.y_feature_dict = create_sequence(test_set, self.X_cols, self.y_cols, n_steps)
+            ticker = self.tickers[i]
 
-            X_train = np.concatenate((X_train, X_train_i), axis=0)
-            X_test = np.concatenate((X_test, X_test_i), axis=0)
-            y_train = np.concatenate((y_train, y_train_i), axis=0)
-            y_test = np.concatenate((y_test, y_test_i), axis=0)
+            train_elements, self.X_feature_dict, self.y_feature_dict = create_sequence(training_set, self.X_cols, self.y_cols, n_steps, ticker, isTrain = True)
+            test_elements, self.X_feature_dict, self.y_feature_dict = create_sequence(test_set, self.X_cols, self.y_cols, n_steps, ticker, isTrain = False)
 
-        return X_train, X_test, y_train, y_test
+            train_seq_elements += train_elements
+            test_seq_elements += test_elements
+
+        return train_seq_elements, test_seq_elements
         
         
     def scale_quant_min_max(self,feature_sets, training_dfs, test_dfs):
@@ -186,29 +224,22 @@ class ScalerSequencer:
             for i in range(len(training_dfs)):
                 training_set = training_dfs[i]
                 test_set = test_dfs[i]
-
-
-                count = Counter(feature_set.cols)
-                items =  [item for item, count in count.items() if count > 1]
-                if len(feature_set.cols) != len(set(feature_set.cols)):
-                    print(items)
                     
-
                 training_set[feature_set.cols] = scaler.transform(training_set[feature_set.cols])
                 test_set[feature_set.cols] = scaler.transform(test_set[feature_set.cols])
 
                 training_dfs[i] = training_set
                 test_dfs[i] = test_set
-            feature_set.scalers.append(scaler)
+            feature_set.scaler = scaler
         
         return training_dfs, test_dfs
     
-    def scale_sbs(self,feature_sets,X_train,X_test):
+    def scale_sbs(self,feature_sets,train_seq_elements,test_seq_elements):
         """
         Scales the features in each feature_set sequence by sequence independant of each other 
         """
-        X_train = np.copy(X_train)
-        X_test = np.copy(X_test)
+        train_seq_elements = deepcopy(train_seq_elements)
+        test_seq_elements = deepcopy(test_seq_elements)
 
         # Iterate through all the feature_sets requiring SBS scaling 
         for feature_set in feature_sets:
@@ -218,97 +249,110 @@ class ScalerSequencer:
 
             # Iterate through each column, scaling each sequence in both the train and test set
             for index in cols_indices:
-                for ts in X_train: 
+                for seq_element in train_seq_elements: 
+                    ts = seq_element.seq_x
+                    ts_scaled = seq_element.seq_x_scaled
                     scaler = MinMaxScaler(feature_set.range)
-                    ts[:,index] = scaler.fit_transform(np.copy(ts[:,index].reshape(-1,1))).ravel()
-                    feature_set.scalers.append(scaler)
-                for ts in X_test:
+                    ts_scaled[:,index] = scaler.fit_transform(np.copy(ts[:,index].reshape(-1,1))).ravel()
+
+                    feature_set_copy = deepcopy(feature_set)
+                    feature_set_copy.scaler = scaler 
+                    seq_element.X_feature_sets.append(feature_set_copy)
+
+                for seq_element in test_seq_elements:
+                    ts = seq_element.seq_x
+                    ts_scaled = seq_element.seq_x_scaled
                     scaler = MinMaxScaler(feature_set.range)
-                    ts[:,index] = scaler.fit_transform(np.copy(ts[:,index].reshape(-1,1))).ravel()
-                    feature_set.scalers.append(scaler)
-        return X_train, X_test
+                    ts_scaled[:,index] = scaler.fit_transform(np.copy(ts[:,index].reshape(-1,1))).ravel()
+                    feature_set_copy = deepcopy(feature_set)
+                    feature_set_copy.scaler = scaler 
+                    seq_element.X_feature_sets.append(feature_set_copy)
+
+        return train_seq_elements, test_seq_elements
     
-    def scale_sbsg(self,feature_sets,X_train,X_test):
+    def scale_sbsg(self,feature_sets,train_seq_elements, test_seq_elements):
         """
         Scales the features in each feature_set sequence by sequence independant of each other 
         """
-        X_train = np.copy(X_train)
-        X_test = np.copy(X_test)
 
         for feature_set in feature_sets:
             cols = feature_set.cols
             cols_indices = [self.X_feature_dict[col] for col in cols]
-
-
+            
             # Create an instance of time series scaler
-        
-            
             # Iterate over each sequence and scale the specified features
-            for i in range(X_train.shape[0]):
+            for i in range(len(train_seq_elements)):
 
-            # for i in range(1):
-                scaler = MinMaxPercentileScaler()
+                scaler = MinMaxScaler()
                 # Extract the sequence
-                sequence = np.copy(X_train[i])
+                ts = train_seq_elements[i].seq_x
+                ts_scaled = train_seq_elements[i].seq_x_scaled
                 
                 # Vertically stack the columns to be scaled
-                combined_series = sequence[:, cols_indices].reshape(-1, 1)
+                combined_series = ts[:, cols_indices].reshape(-1, 1)
                 
                 # Scale the combined series
                 scaled_combined_series = scaler.fit_transform(np.copy(combined_series))
                 # Split the scaled_combined_series back to the original shape and update the sequence
-                sequence[:, cols_indices] = scaled_combined_series.reshape(sequence.shape[0], len(cols_indices))
-                
-                # Assign the scaled sequence back to the original 3D array
-                X_train[i] = sequence
+                ts_scaled[:, cols_indices] = scaled_combined_series.reshape(ts.shape[0], len(cols_indices))
 
-                feature_set.scalers.append(scaler)
+    
+                feature_set_copy = deepcopy(feature_set)
+                feature_set_copy.scaler = scaler 
+                train_seq_elements[i].X_feature_sets.append(feature_set_copy)
             
             
-            for i in range(X_test.shape[0]):
-                scaler = MinMaxPercentileScaler()
+            for i in range(len(test_seq_elements)):
+                scaler = MinMaxScaler()
                 # Extract the sequence
-                sequence = np.copy(X_test[i])
+                ts = test_seq_elements[i].seq_x
+                ts_scaled = test_seq_elements[i].seq_x_scaled
                 
                 # Vertically stack the columns to be scaled
-                combined_series = sequence[:, cols_indices].reshape(-1, 1)
+                combined_series = ts[:, cols_indices].reshape(-1, 1)
                 # Scale the combined series
                 scaled_combined_series = scaler.fit_transform(np.copy(combined_series))
                 
                 # Split the scaled_combined_series back to the original shape and update the sequence
-                sequence[:, cols_indices] = scaled_combined_series.reshape(sequence.shape[0], len(cols_indices))
-                
-                # Assign the scaled sequence back to the original 3D array
-                X_test[i] = sequence
+                ts_scaled[:, cols_indices] = scaled_combined_series.reshape(ts.shape[0], len(cols_indices))
             
-                feature_set.scalers.append(scaler)
+                feature_set_copy = deepcopy(feature_set)
+                feature_set_copy.scaler = scaler 
+                train_seq_elements[i].X_feature_sets.append(feature_set_copy)
 
     
-        return X_train, X_test
+        return train_seq_elements, test_seq_elements
     
-    def y_scale_sbs(self,feature_set, y_train, y_test): 
+    def y_scale_sbs(self,feature_sets,train_seq_elements,test_seq_elements): 
         """
         Scale the y features in each sequence with respect to each other. 
         This means if feature 1 is pctChg 1 day out and feature 2 is pctChg 5 days out, they will be on the same scale
         """
+        for feature_set in feature_sets:
+            cols = feature_set.cols
+            cols_indices = [self.y_feature_dict[col] for col in cols]
 
-        y_train = np.copy(y_train)
-        y_test = np.copy(y_test)
-        # print(y_train)
-        for i,row in enumerate(y_train): 
-            scaler = MinMaxPercentileScaler()
-            # print(row)
-            scaled_row = scaler.fit_transform(np.copy(row.reshape(-1,1))).ravel()
-            # print(scaled_row)
-            y_train[i] = scaled_row 
-            feature_set[0].scalers.append(scaler)
-        for i,row in enumerate(y_test):
-            scaler = MinMaxPercentileScaler(percentile=[0,100])
-            row = scaler.fit_transform(np.copy(row.reshape(-1,1))).ravel()
-            y_test[i] = row 
-            feature_set[0].scalers.append(scaler)
+            for i,seq_ele in enumerate(train_seq_elements): 
+                y_seq = seq_ele.seq_y
+
+                scaler = MinMaxPercentileScaler()
+                scaled_y_seq = scaler.fit_transform(np.copy(y_seq[cols_indices].reshape(-1,1))).ravel()
+                seq_ele.seq_y_scaled = scaled_y_seq
+                feature_set_copy = deepcopy(feature_set)
+                feature_set_copy.scaler = scaler
+                seq_ele.y_feature_sets.append(feature_set_copy)
+
+            for i,seq_ele in enumerate(test_seq_elements):
+                y_seq = seq_ele.seq_y
+
+                scaler = MinMaxPercentileScaler()
+                scaled_y_seq = scaler.fit_transform(np.copy(y_seq[cols_indices].reshape(-1,1))).ravel()
+                seq_ele.seq_y_scaled = scaled_y_seq
+                feature_set_copy = deepcopy(feature_set)
+                feature_set_copy.scaler = scaler
+                seq_ele.y_feature_sets.append(feature_set_copy)
         
-        return y_train, y_test
+        return train_seq_elements, test_seq_elements
     
     def get_feature_dict(self):
         return self.X_feature_dict, self.y_feature_dict
@@ -325,23 +369,30 @@ def df_train_test_split(dataset, tstart, tend, feature_list):
     return train, test
 
 
-def create_sequence(df, X_cols, y_cols, n_steps):
+def create_sequence(df, X_cols, y_cols, n_steps, ticker, isTrain):
     """
     Creates sequences of length n_steps from the dataframe df for the columns in X_cols and y_cols.
     """
-    X, y = [], []
-    sequence = df[list(X_cols.union(y_cols))].values
 
+    X_cols_list = list(X_cols)
+    y_cols_list = sorted(list(y_cols)) ## Jenky work around to ensure that the columns for y target +1day,+2day etc are in the correct order
+    df_cols = df[X_cols_list + y_cols_list]
+
+    dates = df.index.tolist()
+    sequence = df_cols.values
+    
     # Get indices of X_cols and y_cols in the dataframe
-    X_indices_df = [df.columns.get_loc(col) for col in X_cols]
-    y_indices_df = [df.columns.get_loc(col) for col in y_cols]
+    X_indices_df = [df_cols.columns.get_loc(col) for col in X_cols_list]
+    y_indices_df = [df_cols.columns.get_loc(col) for col in y_cols_list]
 
     # Indices of features in the sequence (3D array)
     X_indices_seq = list(range(len(X_cols)))
     y_indices_seq = list(range(len(y_cols)))
 
-    X_feature_dict = {col: index for col, index in zip(X_cols, X_indices_seq)}
-    y_feature_dict = {col: index for col, index in zip(y_cols, y_indices_seq)}
+    X_feature_dict = {col: index for col, index in zip(X_cols_list, X_indices_seq)}
+    y_feature_dict = {col: index for col, index in zip(y_cols_list, y_indices_seq)}
+
+    sequence_elements = []
 
     for i in range(len(sequence)):
         end_idx = i + n_steps
@@ -354,10 +405,16 @@ def create_sequence(df, X_cols, y_cols, n_steps):
         # Get sequence for y from the row at end_idx-1 of sequence for the columns in y_cols
         seq_y = sequence[end_idx - 1, y_indices_df]
 
-        X.append(seq_x)
-        y.append(seq_y)
+        start_date = dates[i]
+        end_date = dates[end_idx - 1]
 
-    return X, y, X_feature_dict, y_feature_dict
+        sequence_element = SequenceElement(seq_x, seq_y, isTrain, X_feature_dict, y_feature_dict, start_date, end_date,ticker)
+
+        sequence_elements.append(sequence_element)
+    
+    
+
+    return sequence_elements, X_feature_dict, y_feature_dict
 
 
 

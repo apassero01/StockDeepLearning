@@ -22,7 +22,7 @@ class FeatureSet:
         self.cols = []
         self.scaling_method = scaling_method
 
-        self.scalers = []
+        self.scaler = None
 
         self.range = scale_range
 
@@ -248,7 +248,7 @@ def create_trend_vars(df: pd.DataFrame,start_lag = 1, end_lag = 1) -> (pd.DataFr
        
 
 def create_pctChg_vars(
-    df: pd.DataFrame, rolling_sum_windows=(1, 2, 3, 4, 5, 6), scaling_method = ScalingMethod.SBSG, start_lag = 1, end_lag = 1
+    df: pd.DataFrame, rolling_sum_windows=(1, 2, 3, 4, 5, 6), scaling_method = ScalingMethod.QUANT_MINMAX, start_lag = 1, end_lag = 1
 ) -> (pd.DataFrame, FeatureSet):
     """
     Create key target variables from the OHLC processed data.
