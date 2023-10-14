@@ -11,6 +11,7 @@ from sklearn.preprocessing import (
     LabelBinarizer,
     RobustScaler,
 )
+from sklearn.base import BaseEstimator, TransformerMixin
 
 
 class FeatureSet:
@@ -138,6 +139,41 @@ class StockDataSet(DataSet):
 
         self.update_total_df()
         self.created_features = True
+
+    def scale_quant_min_max(self,feature_sets, training_dfs, test_dfs):
+        """
+        Scales the features in the feature sets in dataframe form using custom MinMaxPercentileScaler
+        """
+
+        training_dfs = [df.copy() for df in training_dfs]
+        test_dfs = [df.copy() for df in test_dfs]
+
+        combined_train_df = pd.DataFrame()
+        combined_test_df = pd.DataFrame()
+
+        #Combine all the training and test dataframes into one dataframe
+        for i in range(len(training_dfs)):
+            combined_train_df = pd.concat([combined_train_df,training_dfs[i]],axis = 0)
+            combined_test_df = pd.concat([combined_test_df,test_dfs[i]],axis = 0)
+        
+        #Scale the features in the feature sets
+        for feature_set in feature_sets: 
+            scaler = MinMaxPercentileScaler()
+            scaler.fit(combined_train_df[feature_set.cols])
+
+            # After fitting the scaler to the combined training dataframe, transform the individual dataframes
+            for i in range(len(training_dfs)):
+                training_set = training_dfs[i]
+                test_set = test_dfs[i]
+                    
+                training_set[feature_set.cols] = scaler.transform(training_set[feature_set.cols])
+                test_set[feature_set.cols] = scaler.transform(test_set[feature_set.cols])
+
+                training_dfs[i] = training_set
+                test_dfs[i] = test_set
+            feature_set.scaler = scaler
+        
+        return training_dfs, test_dfs
 
     def create_y_targets(self, cols_to_create_targets):
         """
@@ -373,7 +409,7 @@ def create_quarter_cols(df):
     return df
 
 
-def add_forward_rolling_sums(df: pd.DataFrame, columns: list, scaling_method = ScalingMethod.SBS) -> (pd.DataFrame, FeatureSet):
+def add_forward_rolling_sums(df: pd.DataFrame, columns: list, scaling_method = ScalingMethod.QUANT_MINMAX) -> (pd.DataFrame, FeatureSet):
     """
     Add the y val for sumPctChgClCl_X for the next X periods. For example sumPctChgClCl_1
     is the percent change from today's close to tomorrow's close, sumPctChgClCl_2 is the percent
@@ -434,3 +470,48 @@ def create_lag_vars(
 
     return new_df
 
+class MinMaxPercentileScaler(BaseEstimator, TransformerMixin):
+    """
+    Custom transformer that clips data to the defined percentiles and scales it between -1 and 1. This is important as zero is maintained before and after scaling. This ensures
+    the same number of values <, = and > zero are maintained.
+    """
+    def __init__(self,percentile=[1,99]):
+        self.max_abs_trimmed_ = None
+        self.percentile = percentile
+    
+    def fit(self, X, y=None):
+        # Ensure we're working with a copy
+        X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
+        
+        # Assuming X is a DataFrame or numpy array
+        low, high = np.percentile(X_copy, self.percentile, axis=0)  # axis=0 computes percentiles column-wise
+        self.max_abs_trimmed_ = np.maximum(np.abs(low), np.abs(high))
+        return self
+
+    def transform(self, X):
+        # Ensure we're working with a copy
+        X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
+        
+        # Clip data column-wise
+        X_copy = np.clip(X_copy, -self.max_abs_trimmed_, self.max_abs_trimmed_)
+
+        # Scale values between -1 and 1 for each column, maintaining zero
+        pos_mask = X_copy > 0
+        neg_mask = X_copy < 0
+        
+        X_copy[pos_mask] = X_copy[pos_mask] / self.max_abs_trimmed_
+        X_copy[neg_mask] = X_copy[neg_mask] / self.max_abs_trimmed_
+
+        return X_copy
+    
+    def inverse_transform(self, X):
+        # Ensure we're working with a copy
+        X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
+        
+        # If it's a DataFrame, get the numpy array
+        if isinstance(X_copy, pd.DataFrame):
+            X_copy = X_copy.values  # Convert to NumPy array
+
+        X_copy = X_copy * self.max_abs_trimmed_
+
+        return X_copy

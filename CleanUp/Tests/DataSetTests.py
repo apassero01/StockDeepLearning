@@ -4,13 +4,13 @@ sys.path.append('../')
 import TSeriesPreproccesing as TSPP
 import unittest
 
-class TestDataSet(unittest.TestCase):
+class TestStockDataSet(unittest.TestCase):
 
     def setUp(self):
         '''
         This method is called before each test
         '''
-        self.tickers = ['AAPL', 'MSFT', 'GOOG']
+        self.tickers = ['AAPL', 'MSFT', 'AMD']
         self.start_date = '2010-01-01'
         self.stockDataSet = TSPP.StockDataSet(self.tickers, self.start_date)
 
