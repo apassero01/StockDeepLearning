@@ -3,6 +3,7 @@ import sys
 sys.path.append('../')
 import TSeriesPreproccesing as TSPP
 import SequencePreprocessing as SP
+import ClusterProcessing as CP
 
 class TestStockSequenceSet(unittest.TestCase):
 
@@ -10,39 +11,20 @@ class TestStockSequenceSet(unittest.TestCase):
         '''
         This method is called before each test
         '''
-        self.tickers = ['AAPL', 'MSFT', 'AMD']
-        self.start_date = '2010-01-01'
-        self.stockDataSet = TSPP.StockDataSet(self.tickers, self.start_date)
+        tickers = ['AAPL', 'MSFT', 'AMD']
+        start_date = '2010-01-01'
+        target_cols = ['sumPctChgclose_1','sumPctChgclose_2','sumPctChgclose_3','sumPctChgclose_4','sumPctChgclose_5','sumPctChgclose_6']
+        n_steps = 20
+        interval = '1d'
+        group_params = CP.StockClusterGroupParams(start_date = start_date, tickers = tickers, interval = interval, target_cols = target_cols, n_steps = n_steps)
+        self.stockDataSet = TSPP.StockDataSet(group_params)
         
         #Create Dataset and do preprocessing 
-        self.stockDataSet.create_dataset()
-        self.stockDataSet.create_features()
-        self.stockDataSet.create_y_targets()
+        self.stockDataSet.preprocess_pipeline()
 
         #Data set creates a sequence set
         self.stockSequenceSet = self.stockDataSet.create_sequence_set()
-    
-    def test_train_test_split(self):
-        '''
-        Tests that the train test split function works as expected
 
-        Tests the following:
-            - train and test sets are not empty 
-            - The last date in the training set happens before the first day in the test set 
-        '''
-    
-    def scale_quant_min_max(self):
-        '''
-        Tests that the scale_quant_min_max function works as expected
-        Example tests for this are in SequenceScalingTESTS.ipynb
-
-        Tests the following:
-            - All features with featureSet.scalingMethod == QUANT_MINMAX are scaled between -1 and 1
-            - For every feature, the number of instances > 0 and < 0 are the same before and after calling the method
-            - The scaler is saved in feature_set.scaler and inverse transforming with the scaler returns original values (close to)
-                - test this for a few random rows in the dataframe
-        '''
-        pass
     
     def test_create_sequence(self):
         '''
@@ -131,12 +113,12 @@ class TestStockSequenceSet(unittest.TestCase):
                 - test this for a few random rows in the dataframe
         '''
 
-    def test_scale_and_sequence(self):
+    def test_scale_sequences(self):
         '''
-        Test that the scale_and_sequence function works as expected
-        This function is a wrapper for calling sequence methods requiring dataframe form first, then creates sequence, then scales the sequence by sequence features
-        The tests for the internal function calls are done above but we need a few additional tests to ensure the wrapper works as expected
-
+        Test that the scale_sequence function works as expected
+        This function inside the StockSequenceSet class calls the same method in the SequenceScaler class
+        Test both of these methods inside of this test. 
+        
         Tests the following: 
             - All values in each sequence element are scaled between -1 and 1
             - Each sequenceElement has a list of feature sets the same length as X_feature_sets

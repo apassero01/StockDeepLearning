@@ -2,6 +2,7 @@ import sys
 sys.path.append('../')
 
 import TSeriesPreproccesing as TSPP
+import ClusterProcessing as CP
 import unittest
 
 class TestStockDataSet(unittest.TestCase):
@@ -10,9 +11,13 @@ class TestStockDataSet(unittest.TestCase):
         '''
         This method is called before each test
         '''
-        self.tickers = ['AAPL', 'MSFT', 'AMD']
-        self.start_date = '2010-01-01'
-        self.stockDataSet = TSPP.StockDataSet(self.tickers, self.start_date)
+        tickers = ['AAPL', 'MSFT', 'AMD']
+        start_date = '2010-01-01'
+        target_cols = ['sumPctChgclose_1','sumPctChgclose_2','sumPctChgclose_3','sumPctChgclose_4','sumPctChgclose_5','sumPctChgclose_6']
+        n_steps = 20
+        interval = '1d'
+        group_params = CP.StockClusterGroupParams(start_date = start_date, tickers = tickers, interval = interval, target_cols = target_cols, n_steps = n_steps)
+        self.stockDataSet = TSPP.StockDataSet(group_params)
 
     ## Non Class Methods
     def test_create_price_vars(self):
@@ -94,6 +99,7 @@ class TestStockDataSet(unittest.TestCase):
         self.assertIsNotNone(self.stockDataSet)
         self.stockDataSet.create_dataset()
     
+    
     def test_create_features(self):
         '''
         Test that the feature set is created using stockDataSet.create_features() method. 
@@ -125,7 +131,31 @@ class TestStockDataSet(unittest.TestCase):
         self.assertEqual(self.stockDataSet.X_feature_sets[0], price_feature_set + trend_feature_set + pctChg_feature_set)
 
         #TODO add a lot more tests like this to confirm everything works as expected
+
+    def test_train_test_split(self):
+        '''
+        Tests that the train test split function works as expected
+
+        Tests the following:
+            - train and test sets are not empty 
+            - The last date in the training set happens before the first day in the test set 
+        '''
     
+    def scale_quant_min_max(self):
+        '''
+        Tests that the scale_quant_min_max function works as expected
+        This function takes a training set df and a test set df. Save a df 
+        before calling this function and after calling this function and compare the values
+
+        Tests the following:
+            - All features with featureSet.scalingMethod == QUANT_MINMAX are scaled between -1 and 1
+            - For every feature, the number of instances > 0 and < 0 are the same before and after calling the method
+            - The scaler is saved in feature_set.scaler and inverse transforming with the scaler returns original values (close to)
+                - test this for a few random rows in the dataframe
+        '''
+        pass
+
+
     def test_create_target(self):
         '''
         Test that the target set is created using stockDataSet.create_target() method. This method calls the add_forward_rolling_sum function
@@ -156,6 +186,20 @@ class TestStockDataSet(unittest.TestCase):
         target_cols = [col for col in self.stockDataSet.df.columns if 'sumPctChgclose_' in col and '-' not in col]
 
         self.stockDataSet.create_y_targets(target_cols)
+    
+    def test_preprocess_pipeline(self):
+        '''
+        Test that the preprocess pipeline works as expected. This function is responsible for 
+        running through all of the steps required to create our dataset by calling the methods 
+        we tested above. 
+
+        
+        Tests the following: 
+            - training_dfs and test_dfs are not empty 
+            - group_param variable contains the correct X_col, y_col values
+            - X_feature_sets and y_feature_sets contain the correct values (again in group_param variable)
+            - training_dfs and test_dfs all contain the correct columns as seen in X_col, y_col 
+        '''
         
 
 

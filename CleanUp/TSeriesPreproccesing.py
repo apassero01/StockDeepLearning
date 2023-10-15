@@ -5,6 +5,7 @@ from datetime import datetime, timedelta
 import yfinance as yf
 from SequencePreprocessing import StockSequenceSet 
 from SequencePreprocessing import ScalingMethod as ScalingMethod
+from ClusterProcessing import ClusterGroupParams, StockClusterGroupParams
 from sklearn.preprocessing import (
     MinMaxScaler,
     StandardScaler,
@@ -34,18 +35,25 @@ class DataSet:
     Class to encapsuate a dataset. The dataset is essentially a list of dataframes of the
     same shape and size with the same features.
     """
-    def __init__(self):
+    def __init__(self,group_params: ClusterGroupParams):
         self.dfs = []
         self.df = pd.DataFrame()
-        self.X_cols = set()
-        self.y_cols = set()
-        self.x_feature_sets = [] # list of feature sets
-        self.y_feature_sets = [] # list of feature sets
+        self.group_params = group_params
 
+        self.initialize_group_params() 
+
+        self.training_dfs = []
+        self.test_dfs = []
 
         self.created_dataset = False
         self.created_features = False
         self.created_y_targets = False
+    
+    def initialize_group_params(self):
+        self.group_params.X_cols = set() 
+        self.group_params.y_cols = set()
+        self.group_params.X_feature_sets = [] # list of feature sets
+        self.group_params.y_feature_sets = [] # list of feature sets
 
     def update_total_df(self):
         """
@@ -71,6 +79,12 @@ class DataSet:
         """
         pass
 
+    def preprocess_pipeline(self):
+        """
+        Preprocess the dataset
+        """
+        pass 
+
 class StockDataSet(DataSet):
 
     """
@@ -80,14 +94,8 @@ class StockDataSet(DataSet):
     In the case of stocks this is 1 or more stock dataframes that are combined into one dataset
     """
 
-    def __init__(self, tickers, start, end=None, interval="1d"):
-        super().__init__()
-        self.tickers = tickers
-        self.start = datetime.strptime(start, "%Y-%m-%d")
-        self.end = end
-        if end is None:
-            self.end = datetime.today().date()
-        self.interval = interval
+    def __init__(self, group_params: StockClusterGroupParams, interval="1d"):
+        super().__init__(group_params)
 
     def create_dataset(self):
         """
@@ -97,17 +105,35 @@ class StockDataSet(DataSet):
             return
 
         self.dfs = []
-        self.X_cols = set()
-        self.y_cols = set()
 
-        for ticker in self.tickers:
-            stock_df, cols = get_stock_data(ticker, self.start, self.end, self.interval)
+        for ticker in self.group_params.tickers:
+            stock_df, cols = get_stock_data(ticker, self.group_params.start_date, self.group_params.end_date, self.group_params.interval)
             self.dfs.append(stock_df)
 
-        self.X_cols.update(cols)
+        self.group_params.X_cols.update(cols)
         self.update_total_df()
 
         self.created_dataset = True
+    
+    def preprocess_pipeline(self):
+        """
+        Preprocess the dataset
+        """
+        if not self.created_dataset:
+            self.create_dataset()
+        if not self.created_features:
+            self.create_features()
+
+        self.train_test_split()
+
+        x_quant_min_max_feature_sets = [feature_set for feature_set in self.group_params.X_feature_sets if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX.value] 
+
+        if len(x_quant_min_max_feature_sets) > 0:
+            self.training_dfs, self.test_dfs = self.scale_quant_min_max(x_quant_min_max_feature_sets, self.training_dfs, self.test_dfs)
+
+        
+        if not self.created_y_targets:
+            self.create_y_targets(self.group_params.target_cols)
 
     def create_features(self):
         """
@@ -115,30 +141,49 @@ class StockDataSet(DataSet):
         """
         if self.created_features:
             return
+        
+        X_feature_sets = []
+        X_cols = set() 
 
         # Create price features
         for i in range(len(self.dfs)):
             df, feature_set = create_price_vars(self.dfs[i])
             self.dfs[i] = df
-        self.x_feature_sets.append(feature_set)
-        self.X_cols.update(feature_set.cols)
+        X_feature_sets.append(feature_set)
+        X_cols.update(feature_set.cols)
 
         # Create trend features
         for i in range(len(self.dfs)):
             df, feature_set = create_trend_vars(self.dfs[i])
             self.dfs[i] = df
-        self.x_feature_sets.append(feature_set)
-        self.X_cols.update(feature_set.cols)
+        X_feature_sets.append(feature_set)
+        X_cols.update(feature_set.cols)
 
         # Create percent change variables 
         for i in range(len(self.dfs)):
             df, feature_set = create_pctChg_vars(self.dfs[i])
             self.dfs[i] = df
-        self.x_feature_sets.append(feature_set)
-        self.X_cols.update(feature_set.cols)
+        X_feature_sets.append(feature_set)
+        X_cols.update(feature_set.cols)
+
+        # Update the group params with the new feature sets and columns
+        self.group_params.X_feature_sets = X_feature_sets
+        self.group_params.X_cols = X_cols
 
         self.update_total_df()
         self.created_features = True
+    
+    def train_test_split(self,feature_list = None, training_percentage = 0.8):
+    
+        if not feature_list:
+            feature_list = list(self.group_params.X_cols.union(self.group_params.y_cols))
+
+        for df in self.dfs:
+            training_df, test_df = df_train_test_split(df, feature_list, training_percentage)
+            self.training_dfs.append(training_df)
+            # test_df = test_df.iloc[self.n_steps:,:] # Remove the first n_steps rows to prevent data leakage
+            #TODO mininmal data leakage needs to be addressed, when refactored, this class does not know the steps
+            self.test_dfs.append(test_df)
 
     def scale_quant_min_max(self,feature_sets, training_dfs, test_dfs):
         """
@@ -185,17 +230,20 @@ class StockDataSet(DataSet):
         if self.created_y_targets:
             return
 
-        for i in range(len(self.dfs)):
-            df, feature_set = add_forward_rolling_sums(self.dfs[i], cols_to_create_targets)
-            self.dfs[i] = df
+        for i in range(len(self.training_dfs)):
+            df, feature_set = add_forward_rolling_sums(self.training_dfs[i], cols_to_create_targets)
+            self.training_dfs[i] = df
+        for i in range(len(self.test_dfs)):
+            df, feature_set = add_forward_rolling_sums(self.test_dfs[i], cols_to_create_targets)
+            self.test_dfs[i] = df
 
-        self.y_feature_sets.append(feature_set)
-        self.y_cols.update(feature_set.cols)
+        self.group_params.y_feature_sets.append(feature_set)
+        self.group_params.y_cols.update(feature_set.cols)
         self.update_total_df()
         self.created_y_targets = True
 
-    def create_sequence_set(self,n_steps):
-        seq = StockSequenceSet(self.X_cols, self.y_cols, self.dfs, self.tickers,self.start, self.end, self.interval, self.x_feature_sets, self.y_feature_sets,n_steps)
+    def create_sequence_set(self):
+        seq = StockSequenceSet(self.group_params, self.training_dfs,self.test_dfs)
         
         return seq
 
@@ -469,6 +517,18 @@ def create_lag_vars(
     new_df = pd.DataFrame(new_cols)
 
     return new_df
+
+def df_train_test_split(dataset, feature_list, train_percentage = 0.8):
+    '''
+    Split the dataset into train and test sets
+    '''
+    total_rows = len(dataset)
+    train_rows = int(total_rows * train_percentage)
+
+    train = dataset.iloc[:train_rows][feature_list]
+    test = dataset.iloc[train_rows:][feature_list]
+
+    return train, test
 
 class MinMaxPercentileScaler(BaseEstimator, TransformerMixin):
     """
