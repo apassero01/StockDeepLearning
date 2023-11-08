@@ -4,6 +4,8 @@ sys.path.append('../')
 import TSeriesPreproccesing as TSPP
 import SequencePreprocessing as SP
 import ClusterProcessing as CP
+import numpy as np
+from copy import deepcopy
 
 class TestStockSequenceSet(unittest.TestCase):
 
@@ -40,14 +42,14 @@ class TestStockSequenceSet(unittest.TestCase):
             - The sequence contains the correct value 
                 - Test these by manually creating a few SequenceElements from the dataframe and compare the sequences to the returned sequences
         '''
-        df = self.stockSequenceSet.dfs[0]
-        X_cols = self.stockSequenceSet.X_cols
-        y_cols = self.stockSequenceSet.y_cols
-        n_steps = 10 # Whatever you would like 
-        ticker = self.stockSequenceSet.tickers[0]
-        sequence_elements, X_feature_dict, y_feature_dict = SP.create_sequence(df, X_cols, y_cols, n_steps, ticker)
+        # df = self.stockSequenceSet.dfs[0]
+        # X_cols = self.stockSequenceSet.X_cols
+        # y_cols = self.stockSequenceSet.y_cols
+        # n_steps = 10 # Whatever you would like 
+        # ticker = self.stockSequenceSet.tickers[0]
+        # sequence_elements, X_feature_dict, y_feature_dict = SP.create_sequence(df, X_cols, y_cols, n_steps, ticker)
         # TODO write tests above to ensure returned sequence elements are correct by comparing to values in the dataframe
-
+        pass
     
     def test_create_comined_sequence(self):
         '''
@@ -59,6 +61,79 @@ class TestStockSequenceSet(unittest.TestCase):
             
         '''
         pass
+    
+    def test_rolling_pctChg_features(self):
+        self.stockSequenceSet.create_combined_sequence()
+        self.stockSequenceSet.scale_sequences()
+
+        orig_group_params = deepcopy(self.stockSequenceSet.group_params)
+
+        
+        orig_train_array = SP.SequenceElement.create_array(np.copy(orig_group_params.train_seq_elements))[0]
+        orig_test_array = SP.SequenceElement.create_array(np.copy(orig_group_params.test_seq_elements))[0]
+        orig_feature_dict = deepcopy(orig_group_params.X_feature_dict)
+        orig_num_features = len(orig_feature_dict.keys())
+        #Create rolling pctChg features
+        pct_Chg_feauture = next(filter(lambda feature_set: feature_set.name == 'pctChg_vars', orig_group_params.X_feature_sets))
+        num_added_features = len(pct_Chg_feauture.cols)
+        # print(pct_Chg_feauture.cols)
+
+        self.stockSequenceSet.add_rolling_pctChg_features(deepcopy(pct_Chg_feauture))
+
+        new_group_params = self.stockSequenceSet.group_params
+        new_train_array = SP.SequenceElement.create_array(np.copy(new_group_params.train_seq_elements))[0]
+        new_test_array = SP.SequenceElement.create_array(np.copy(new_group_params.test_seq_elements))[0]
+        new_feature_dict = new_group_params.X_feature_dict
+        new_num_features = len(new_feature_dict.keys())
+
+        self.assertEqual(orig_train_array.shape[0], new_train_array.shape[0], 'train array shape[0] is not the same')
+        self.assertEqual(orig_test_array.shape[0], new_test_array.shape[0],'test array shape[0] is not the same')
+        self.assertEqual(orig_train_array.shape[1], new_train_array.shape[1],'train array shape[1] is not the same')
+        self.assertEqual(orig_test_array.shape[1], new_test_array.shape[1],'test array shape[1] is not the same')
+        
+
+        self.assertEqual(orig_num_features + num_added_features, new_num_features, 'number features added is incorrect')
+        self.assertEqual(new_num_features, new_train_array.shape[2],'new features not added to train array')
+        self.assertEqual(new_num_features, new_test_array.shape[2],'new features not added to test array')
+
+        self.assertTrue(np.array_equal(orig_train_array, new_train_array[:,:,0:orig_num_features]), 'original features not the same')
+        self.assertTrue(np.array_equal(orig_test_array, new_test_array[:,:,0:orig_num_features]), 'original features not the same')
+
+        for i in orig_feature_dict.keys():
+            self.assertEqual(orig_feature_dict[i], new_feature_dict[i], 'feature dict not the same')
+        
+        # print(pct_Chg_feauture.cols)
+        for col in pct_Chg_feauture.cols:
+            new_name = col+'_cumulative'
+            # print(new_name)
+
+            self.assertTrue(new_name in new_feature_dict.keys(), 'new feature not added to feature dict')
+            # print(new_feature_dict)
+            for i in range(new_train_array.shape[0]):
+                feature_row = new_train_array[i,:,new_feature_dict[col]]
+                feature_row_cuma = new_train_array[i,:,new_feature_dict[new_name]]
+                # print(feature_row)
+                # print(feature_row_cuma)
+                cumu_sum = 0
+                for i in range(new_train_array.shape[1]):
+                    cumu_sum += feature_row[i]
+                    self.assertEqual(cumu_sum, feature_row_cuma[i], 'cumulative feature not calculated correctly')
+
+
+
+
+
+
+
+
+
+        
+
+
+
+
+    
+        
 
     def test_scale_sbs(self):
         '''
@@ -112,6 +187,7 @@ class TestStockSequenceSet(unittest.TestCase):
             we get the original values matching unscaled seq elements
                 - test this for a few random rows in the dataframe
         '''
+        pass
 
     def test_scale_sequences(self):
         '''
@@ -125,6 +201,8 @@ class TestStockSequenceSet(unittest.TestCase):
                 - there should also be the same number of QUANT_MINMAX, SBS and SBSG feature sets in the scaler.X_feature_sets list 
             - The length of each sequenceElement.X_seq and sequenceElement.y_seq is the same as the length
         '''
+        pass
+    
         
 
     

@@ -53,7 +53,8 @@ class ScalingMethod(Enum):
     QUANT_MINMAX = 1
     SBS = 2
     SBSG = 3
-    UNSCALED = 4
+    QUANT_MINMAX_G = 4
+    UNSCALED = 5
 
 
 class SequenceSet: 
@@ -92,7 +93,6 @@ class StockSequenceSet(SequenceSet):
             test_set = self.test_dfs[i]
 
             ticker = tickers[i]
-            print(len(training_set))
             train_elements, X_feature_dict, y_feature_dict = create_sequence(training_set, X_cols, y_cols, n_steps, ticker, isTrain = True)
             test_elements, X_feature_dict, y_feature_dict = create_sequence(test_set, X_cols, y_cols, n_steps, ticker, isTrain = False)
 
@@ -103,6 +103,9 @@ class StockSequenceSet(SequenceSet):
         # For QUANT_MIN_MAX features, the scaling occurs before the sequence is created, so we need to add the already scaled feature sets to the new sequence elements
         x_quant_min_max_feature_sets = [feature_set for feature_set in self.group_params.X_feature_sets if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX.value] 
         y_quant_min_max_feature_sets = [feature_set for feature_set in self.group_params.y_feature_sets if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX.value]  
+        x_quant_min_max_feature_sets += [feature_set for feature_set in self.group_params.X_feature_sets if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX_G.value]
+        y_quant_min_max_feature_sets += [feature_set for feature_set in self.group_params.y_feature_sets if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX_G.value]
+
         [seq_element.X_feature_sets.extend(x_quant_min_max_feature_sets) for seq_element in train_seq_elements]
         [seq_element.X_feature_sets.extend(x_quant_min_max_feature_sets) for seq_element in test_seq_elements]
         [seq_element.y_feature_sets.extend(y_quant_min_max_feature_sets) for seq_element in train_seq_elements]
@@ -115,12 +118,97 @@ class StockSequenceSet(SequenceSet):
 
         return train_seq_elements, test_seq_elements
     
-    
     def scale_sequences(self): 
         scaler = SequenceScaler(self.group_params)
         train_seq_elements, test_seq_elements = scaler.scale_sequences() 
         self.group_params.train_seq_elements = train_seq_elements
         self.group_params.test_seq_elements = test_seq_elements
+    
+    def add_rolling_pctChg_features(self,feature_set): 
+
+        example_seq_element = self.group_params.train_seq_elements[0]
+        features_length = example_seq_element.seq_x_scaled.shape[1]
+
+        X_feature_dict = self.group_params.X_feature_dict
+        train_seq_elements = self.group_params.train_seq_elements
+        test_seq_elements = self.group_params.test_seq_elements
+
+        cols = feature_set.cols
+        
+        cuma_feature_set = deepcopy(feature_set)
+        cuma_feature_set.name = "cuma_pctChg_vars"
+
+        new_features = [] 
+        for feature_name in cols: 
+            idx = X_feature_dict[feature_name]
+            new_feature_name = feature_name + "_cumulative"
+
+            for seq in train_seq_elements:
+                seq_x_scaled = seq.seq_x_scaled
+                cumsum_pctChg = np.cumsum(seq_x_scaled[:,idx])
+                seq_x_scaled = np.column_stack((seq_x_scaled,cumsum_pctChg))
+                seq.seq_x_scaled = seq_x_scaled
+
+            for seq in test_seq_elements:
+                seq_x_scaled = seq.seq_x_scaled
+                cumsum_pctChg = np.cumsum(seq_x_scaled[:,idx])
+                seq_x_scaled = np.column_stack((seq_x_scaled,cumsum_pctChg))
+                seq.seq_x_scaled = seq_x_scaled
+
+            new_features.append(new_feature_name)
+
+        cuma_feature_set.cols = []
+        for new_feature in new_features:
+            cuma_feature_set.cols.append(new_feature)
+            X_feature_dict[new_feature] = features_length + new_features.index(new_feature) 
+        
+        self.group_params.X_feature_dict = X_feature_dict
+        return cuma_feature_set
+    
+    def get_3d_array(self,scaled = True):
+        train_seq_elements = self.group_params.train_seq_elements
+        test_seq_elements = self.group_params.test_seq_elements
+        X_train, y_train = SequenceElement.create_array(train_seq_elements,scaled)
+        X_test, y_test = SequenceElement.create_array(test_seq_elements,scaled)
+        return X_train, y_train, X_test, y_test
+    
+    def preprocess_pipeline(self,add_cuma_pctChg_features = False):
+        self.create_combined_sequence()
+
+        if self.group_params.train_seq_elements is None or self.group_params.test_seq_elements is None:
+            raise ValueError("Sequence elements have not been created")
+        if len(self.group_params.train_seq_elements) < 1 or len(self.group_params.test_seq_elements) < 1:
+            raise ValueError("Sequence elements have not been created")
+        if self.group_params.train_seq_elements[0].seq_x is None or self.group_params.test_seq_elements[0].seq_x is None:
+            raise ValueError("Sequence elements have not been created")
+        if self.group_params.train_seq_elements[0].seq_y is None or self.group_params.test_seq_elements[0].seq_y is None:
+            raise ValueError("Sequence elements have not been created")
+        if len(self.group_params.train_seq_elements[0].seq_x) < 1 or len(self.group_params.test_seq_elements[0].seq_x) < 1:
+            raise ValueError("Sequence elements have not been created")
+        if len(self.group_params.train_seq_elements[0].seq_y) < 1 or len(self.group_params.test_seq_elements[0].seq_y) < 1:
+            raise ValueError("Sequence elements have not been created")
+
+        self.scale_sequences()
+
+        if self.group_params.train_seq_elements[0].seq_x_scaled is None or self.group_params.test_seq_elements[0].seq_x_scaled is None:
+            raise ValueError("Sequence elements have not been created")
+        if self.group_params.train_seq_elements[0].seq_y_scaled is None or self.group_params.test_seq_elements[0].seq_y_scaled is None:
+            raise ValueError("Sequence elements have not been created")
+        if len(self.group_params.train_seq_elements[0].seq_x_scaled) < 1 or len(self.group_params.test_seq_elements[0].seq_x_scaled) < 1:
+            raise ValueError("Sequence elements have not been created")
+        if len(self.group_params.train_seq_elements[0].seq_y_scaled) < 1 or len(self.group_params.test_seq_elements[0].seq_y_scaled) < 1:
+            raise ValueError("Sequence elements have not been created")
+
+
+        if add_cuma_pctChg_features:
+            pct_Chg_feautures = (filter(lambda feature_set: feature_set.name == 'pctChg_vars' or feature_set.name == 'rolling_pctChg_vars', self.group_params.X_feature_sets))
+            print("rolling")
+            for pct_Chg_feauture in pct_Chg_feautures:
+                cuma_feature_set = self.add_rolling_pctChg_features(pct_Chg_feauture)
+                self.group_params.X_feature_sets.append(cuma_feature_set)
+
+
+
         
 
 class SequenceScaler:
