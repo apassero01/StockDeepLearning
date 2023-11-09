@@ -1,5 +1,5 @@
 from datetime import datetime
-from SequencePreprocessing import StockSequenceSet, SequenceElement
+from SequencePreprocessing import StockSequenceSet, SequenceElement, ScalingMethod
 from TSeriesPreproccesing import StockDataSet
 from tslearn.clustering import TimeSeriesKMeans
 import numpy as np
@@ -37,6 +37,14 @@ class StockClusterGroupParams(ClusterGroupParams):
         self.n_steps = n_steps
         self.interval = interval
         self.cluster_features = cluster_features
+
+        self.scaling_dict = {
+            'price_vars': ScalingMethod.SBSG,
+            'trend_vars' : ScalingMethod.SBS,
+            'pctChg_vars' : ScalingMethod.QUANT_MINMAX,
+            'rolling_vars' : ScalingMethod.QUANT_MINMAX_G,
+            'target_vars' : ScalingMethod.QUANT_MINMAX_G
+        }
 
 
 
