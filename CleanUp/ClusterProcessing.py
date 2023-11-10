@@ -10,6 +10,8 @@ from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Dense, LSTM, Dropout, GRU,BatchNormalization
 from tensorflow.keras.optimizers import Adam
 import pandas as pd
+from kneed import KneeLocator
+import matplotlib.pyplot as plt
 
 class ClusterGroupParams: 
     def __init__(self, start_date,end_date = None): 
@@ -103,9 +105,9 @@ class StockClusterGroup(ClusterGroup):
         print(X_test_cluster.shape)
 
 
-        n_clusters = math.ceil(math.sqrt(len(X_train_cluster))) // 4
 
         if alg == 'TSKM':
+            n_clusters = self.determine_n_clusters(X_train_cluster,metric)
             self.cluster_alg = TimeSeriesKMeans(n_clusters=n_clusters, metric=metric,random_state=3)
         
         self.train_labels = self.cluster_alg.fit_predict(X_train_cluster)
@@ -125,6 +127,27 @@ class StockClusterGroup(ClusterGroup):
         for i in range(len(test_seq_elements)):
             seq_element = test_seq_elements[i]
             seq_element.cluster_label = self.test_labels[i]
+    
+    def determine_n_clusters(self,X_train_cluster,metric = "euclidean"):
+        '''
+        Method that utilizes the elbow method to determine the optimal number of clusters
+        '''
+        min_clusters = math.ceil(math.sqrt(len(X_train_cluster))) // 8
+        max_clusters = math.ceil(math.sqrt(len(X_train_cluster))) // 2 
+
+        wcss = []
+        self.K = range(min_clusters,max_clusters,4)
+        for k in self.K:
+            cluster_alg = TimeSeriesKMeans(n_clusters=k, metric=metric,random_state=3)
+            train_labels = cluster_alg.fit_predict(X_train_cluster)
+            wcss.append(cluster_alg.inertia_)
+        
+        kn = KneeLocator(self.K,wcss, curve='convex', direction='decreasing')
+
+        self.wcss = wcss
+        return kn.knee
+
+
     
     def create_clusters(self):
         train_seq_elements = self.group_params.train_seq_elements
@@ -184,7 +207,7 @@ class StockCluster(Cluster):
     def remove_outliers(self):
         pass
 
-    def visualize_cluster(self, isTrain = True):
+    def visualize_cluster(self, isTrain = True, y_range = [-5,5]):
         if isTrain:
             arr_3d = self.X_train
         else:
@@ -215,9 +238,25 @@ class StockCluster(Cluster):
         fig.update_layout(title="Cluster " + str(self.label),
                         scene=dict(xaxis_title='Time',
                                     yaxis_title='Feature Index',
-                                    zaxis_title='Value'))
+                                    zaxis_title='Value',
+                                    zaxis = dict(range=y_range)))
 
         return fig
+    
+    def visualize_target_values(self): 
+        '''
+        Create a scatter plot of the target values for the cluster
+        
+        '''
+        target_vals = self.y_train
+
+        num_elements = len(target_vals)
+        num_steps = len(target_vals[0])
+
+        for step in range(num_steps):
+            plt.scatter([step+1] * num_elements, target_vals[:, step])
+
+
     
     def train_rnn(self,model_features):
         if len(self.X_train) == 0 or len(self.X_test) == 0:
@@ -235,44 +274,27 @@ class StockCluster(Cluster):
         predicted_y = self.model.predict(X_test_filtered)
         predicted_y = np.squeeze(predicted_y, axis=-1)
 
-        results = pd.DataFrame({
-            'predicted_1': predicted_y[:, 0],
-            'predicted_2': predicted_y[:, 1],
-            'predicted_3': predicted_y[:, 2],
-            'predicted_4': predicted_y[:, 3],
-            'predicted_5': predicted_y[:, 4],
-            'predicted_6': predicted_y[:, 5],
-            'real_1': y_test[:, 0],
-            'real_2': y_test[:, 1],
-            'real_3': y_test[:, 2],
-            'real_4': y_test[:, 3],
-            'real_5': y_test[:, 4],
-            'real_6': y_test[:, 5],
-        })
+        num_days = predicted_y.shape[1]  # Assuming this is the number of days
+        results = pd.DataFrame(predicted_y, columns=[f'predicted_{i+1}' for i in range(num_days)])
 
-        results['same_1'] = ((results['predicted_1'] > 0) & (results['real_1'] > 0)) | ((results['predicted_1'] < 0) & (results['real_1'] < 0))
-        results['same_2'] = ((results['predicted_2'] > 0) & (results['real_2'] > 0)) | ((results['predicted_2'] < 0) & (results['real_2'] < 0))
-        results['same_3'] = ((results['predicted_3'] > 0) & (results['real_3'] > 0)) | ((results['predicted_3'] < 0) & (results['real_3'] < 0))
-        results['same_4'] = ((results['predicted_4'] > 0) & (results['real_4'] > 0)) | ((results['predicted_4'] < 0) & (results['real_4'] < 0))
-        results['same_5'] = ((results['predicted_5'] > 0) & (results['real_5'] > 0)) | ((results['predicted_5'] < 0) & (results['real_5'] < 0))
-        results['same_6'] = ((results['predicted_6'] > 0) & (results['real_6'] > 0)) | ((results['predicted_6'] < 0) & (results['real_6'] < 0))
-        accuracy1 = results['same_1'].sum() / len(results) * 100
-        accuracy2 = results['same_2'].sum() / len(results) * 100
-        accuracy3 = results['same_3'].sum() / len(results) * 100
-        accuracy4 = results['same_4'].sum() / len(results) * 100
-        accuracy5 = results['same_5'].sum() / len(results) * 100
-        accuracy6 = results['same_6'].sum() / len(results) * 100
+        for i in range(num_days):
+            results[f'real_{i+1}'] = y_test[:, i]
 
-        output_string = (
-        "Cluster Number: " + str(self.label) +
-        " \nAccuracy1D " + str(accuracy1) + " PredictedRet: " + str(results['predicted_1'].mean()) + " ActRet " + str(results['real_1'].mean() ) +
-        " \nAccuracy2D " + str(accuracy2) + " PredictedRet: " + str(results['predicted_2'].mean()) + " ActRet " + str(results['real_2'].mean() ) +
-        " \nAccuracy3D " + str(accuracy3) + " PredictedRet: " + str(results['predicted_3'].mean()) + " ActRet " + str(results['real_3'].mean() ) +
-        " \nAccuracy4D " + str(accuracy4) + " PredictedRet: " + str(results['predicted_4'].mean()) + " ActRet " + str(results['real_4'].mean() ) +
-        " \nAccuracy5D " + str(accuracy5) + " PredictedRet: " + str(results['predicted_5'].mean()) + " ActRet " + str(results['real_5'].mean() ) +
-        " \nAccuracy6D " + str(accuracy6) + " PredictedRet: " + str(results['predicted_6'].mean()) + " ActRet " + str(results['real_6'].mean() ) +
-        " Train set length: " + str(len(X_train_filtered))+ " Test set length: " + str(len(y_test)) + "\n"
-        )
+        # Generate output string with accuracies
+        output_string = f"Cluster Number: {self.label}\n"
+        for i in range(num_days):
+            same_day = ((results[f'predicted_{i+1}'] > 0) & (results[f'real_{i+1}'] > 0)) | \
+                    ((results[f'predicted_{i+1}'] < 0) & (results[f'real_{i+1}'] < 0))
+            accuracy = round(same_day.mean() * 100,2)
+            w_accuracy = round(weighted_dir_acc(results[f'predicted_{i+1}'], results[f'real_{i+1}']),2)
+
+            output_string += (
+                f"Accuracy{i+1}D {accuracy}% (Weighted: {w_accuracy}%) "
+                f"PredictedRet: {results[f'predicted_{i+1}'].mean()} "
+                f"ActRet: {results[f'real_{i+1}'].mean()}\n"
+            )
+        
+        output_string += f"Train set length: {len(X_train_filtered)} Test set length: {len(y_test)}\n"
 
         with open('output.txt', 'a') as f:
             f.write(output_string)
@@ -283,7 +305,11 @@ class StockCluster(Cluster):
 
 
 
-
+def weighted_dir_acc(predicted, actual):
+    directional_accuracy = (np.sign(predicted) == np.sign(actual)).astype(int)
+    magnitude_difference = np.abs(np.abs(predicted) - np.abs(actual)) + 1e-6
+    weights = np.abs(actual) / magnitude_difference
+    return np.sum(directional_accuracy * weights) / np.sum(weights) * 100
 
 def create_model(input_shape):
     # Encoder
@@ -322,7 +348,7 @@ def create_model(input_shape):
 
     optimizer = Adam(learning_rate=0.001)
 
-    model_lstm.compile(optimizer=optimizer, loss="mse")
+    model_lstm.compile(optimizer=optimizer, loss="mae")
     return model_lstm
 
     

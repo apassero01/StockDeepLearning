@@ -233,7 +233,6 @@ class StockDataSet(DataSet):
         
         #Scale the features in the feature sets
         for feature_set in feature_sets: 
-            print(feature_set.name)
             if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX.value:
                 scaler = MinMaxPercentileScaler()
             if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX_G.value:
@@ -626,7 +625,7 @@ def df_train_test_split(dataset, feature_list, train_percentage = 0.8):
 #         return X_copy
 
 class MinMaxPercentileScaler(BaseEstimator, TransformerMixin):
-    def __init__(self, percentile=[1, 99], scaling_mode='column'):
+    def __init__(self, percentile=[5, 95], scaling_mode='column'):
         """
         Custom transformer that clips data to the defined percentiles and scales it between -1 and 1. 
         This ensures the same number of values <, = and > zero are maintained.
@@ -648,8 +647,6 @@ class MinMaxPercentileScaler(BaseEstimator, TransformerMixin):
             self.max_abs_trimmed_ = np.maximum(np.abs(low), np.abs(high))
             if self.max_abs_trimmed_ == 0:
                 print("Warning: Global max absolute trimmed value is zero.")
-            else:
-                print("allgood")
         else:
             raise ValueError("Invalid scaling_mode. Choose either 'column' or 'global'.")
         return self
