@@ -309,7 +309,8 @@ def create_price_vars(df: pd.DataFrame,moving_average_vals = [5,10,20,30,50,100]
     # feature_set.cols += lag_df.columns.tolist()
     
     for col in feature_set.cols:
-        df[col] = df[col].fillna(method='bfill')
+        #df[col] = df[col].fillna(method='bfill')
+        df[col] = df[col].bfill()
 
     return df, feature_set
 

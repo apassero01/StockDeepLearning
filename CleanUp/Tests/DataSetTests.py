@@ -1,5 +1,7 @@
+import random
 import sys
-sys.path.append('../')
+sys.path.append('stocks/CleanUp/')
+import pandas as pd
 
 import TSeriesPreproccesing as TSPP
 import ClusterProcessing as CP
@@ -32,8 +34,31 @@ class TestStockDataSet(unittest.TestCase):
                 - A non empty feature set is returned and the cols in the feature set are all in the dataframe
 
         '''
+        self.stockDataSet.create_dataset()
         df = self.stockDataSet.dfs[0]
         df, feature_set = TSPP.create_price_vars(df) # Calling the create_price_vars function that takes a df and returns the updated df with the new feature set
+        sequence_elements, X_feature_dict, y_feature_dict = SP.create_sequence(self.df, self.X_cols, self.y_cols, self.n_steps, self.ticker)
+        
+        # Test that X_feature_dict contains the correct key-value pairs
+        self.assertEqual(X_feature_dict, {'Open': 0, 'High': 1, 'Low': 2})
+        
+        # Test that y_feature_dict contains the correct key-value pairs
+        self.assertEqual(y_feature_dict, {'Close': 0})
+        
+        # Test that the sequence contains the correct values
+        expected_sequence = [
+            {'AAPL_Open_0': 10, 'AAPL_High_0': 15, 'AAPL_Low_0': 5, 'AAPL_Close_0': 20},
+            {'AAPL_Open_1': 20, 'AAPL_High_1': 25, 'AAPL_Low_1': 15, 'AAPL_Close_1': 30},
+            {'AAPL_Open_2': 30, 'AAPL_High_2': 35, 'AAPL_Low_2': 25, 'AAPL_Close_2': 40},
+            {'AAPL_Open_3': 40, 'AAPL_High_3': 45, 'AAPL_Low_3': 35, 'AAPL_Close_3': 50},
+            {'AAPL_Open_4': 50, 'AAPL_High_4': 55, 'AAPL_Low_4': 45, 'AAPL_Close_4': 60},
+            {'AAPL_Open_5': 60, 'AAPL_High_5': 65, 'AAPL_Low_5': 55, 'AAPL_Close_5': 70},
+            {'AAPL_Open_6': 70, 'AAPL_High_6': 75, 'AAPL_Low_6': 65, 'AAPL_Close_6': 80},
+            {'AAPL_Open_7': 80, 'AAPL_High_7': 85, 'AAPL_Low_7': 75, 'AAPL_Close_7': 90},
+            {'AAPL_Open_8': 90, 'AAPL_High_8': 95, 'AAPL_Low_8': 85, 'AAPL_Close_8': 100},
+            {'AAPL_Open_9': 100, 'AAPL_High_9': 105, 'AAPL_Low_9': 95, 'AAPL_Close_9': 110}
+        ]
+        self.assertEqual(sequence_elements, expected_sequence)
     
     def test_create_trend_vars(self):
         '''
@@ -46,8 +71,22 @@ class TestStockDataSet(unittest.TestCase):
             - A non empty feature set is returned and the cols in the feature set are all in the dataframe
 
         '''
+        self.stockDataSet.create_dataset()
         df = self.stockDataSet.dfs[0]
         df, feature_set = TSPP.create_trend_vars(df)
+
+        # Test that new columns are added
+        expected_columns= ['volume']
+        for col in expected_columns:
+            self.assertIn(col, df.columns)
+        
+        # Test that there are no nan values in the dataset
+        self.assertFalse(df.isnull().values.any())
+
+        # Test that the feature set is not empty and contains the correct columns
+        self.assertFalse(feature_set.empty)
+        self.assertEqual(feature_set, expected_columns)
+        
     
     def test_create_pctChg_vars(self):
         '''
@@ -65,12 +104,33 @@ class TestStockDataSet(unittest.TestCase):
             - There are no nan values in the dataset
             - A non empty feature set is returned and the cols in the feature set are all in the dataframe
         '''
+        self.stockDataSet.create_dataset()
         df = self.stockDataSet.dfs[0]
         df, feature_set = TSPP.create_pctChg_vars(df)
+
+        # Test that new columns are added
+        expected_columns= ['pctChgclose', 'pctChgopen', 'pctChghigh', 'pctChglow', 'pctChgvolume', 'sumPctChgclose_1', 'sumPctChgclose_2', 'sumPctChgclose_3', 'sumPctChgclose_4', 'sumPctChgclose_5', 'sumPctChgclose_6']
+        for col in expected_columns:
+            self.assertIn(col, df.columns)
+        
+        # Test that there are no nan values in the dataset
+        self.assertFalse(df[expected_columns].isnull().values.any())
+        for col in expected_columns:
+            self.assertIn(col, feature_set.columns)
+
+        #Test that the pctChgclose values are correct, select random days and calculate the pctChgclose manually and compare it to the value in the dataframe
+        test_dates = ['2010-01-04', '2010-01-05', '2010-01-06', '2010-01-07']
+        if all(date in df.index for date in test_dates):
+            for date in test_dates:
+                self.assertAlmostEqual(df.loc[date, 'pctChgclose'], (df.loc[date, 'close'] - df.loc[date - pd.Timedelta(days=1), 'close']) / df.loc[date - pd.Timedelta(days=1), 'close'] * 100)
+
+        calculated_pctChgclose = (df.loc['2021-05-10', 'close'] - df.loc['2021-05-09', 'close']) / df.loc['2021-05-09', 'close'] * 100
+        self.assertAlmostEqual(df.loc['2021-05-10', 'pctChgclose'], calculated_pctChgclose)
+
     
-    def test_add_forward_rolling_sim(self):
+    def test_add_forward_rolling_sums(self):
         '''
-        Test that the non class function add_forward_rolling_sim works as expected
+        Test that the non class function add_forward_rolling_sums works as expected
         This function is outside of the class and takes a dataframe as an input
 
         Tests the following: 
@@ -81,8 +141,32 @@ class TestStockDataSet(unittest.TestCase):
             - There are no nan values in the dataset
             - A non empty feature set is returned and the cols in the feature set are all in the dataframe
         '''
+        self.stockDataSet.create_dataset()
         df = self.stockDataSet.dfs[0]
-        df, feature_set = TSPP.add_forward_rolling_sum(df)
+        df, feature_set = TSPP.add_forward_rolling_sums(df)
+
+        #Test that new columns are added
+        expected_columns= ['sumPctChgclose_1', 'sumPctChgclose_2', 'sumPctChgclose_3', 'sumPctChgclose_4', 'sumPctChgclose_5', 'sumPctChgclose_6']
+        for col in expected_columns:
+            self.assertIn(col, df.columns)
+        
+        #Test for nan values
+        self.assertFalse(df[expected_columns].isnull().values.any())
+
+        #Test that feature set is not empty and contains the correct columns
+        self.assertFalse(feature_set.empty)
+        self.assertEqual(feature_set, expected_columns)
+
+        #Test that the sumPctChgclose+X values are correct, select random days and calculate the sumPctChgclose+X manually and compare it to the value in the dataframe
+        test_dates = ['2010-01-04', '2010-01-05', '2010-01-06', '2010-01-07']
+        if all(date in df.index for date in test_dates):
+            for date in test_dates:
+                self.assertAlmostEqual(df.loc[date, 'sumPctChgclose_1'], (df.loc[date + pd.Timedelta(days=1), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=2), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=3), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=4), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=5), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=6), 'pctChgclose']))
+                self.assertAlmostEqual(df.loc[date, 'sumPctChgclose_2'], (df.loc[date + pd.Timedelta(days=2), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=3), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=4), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=5), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=6), 'pctChgclose']))
+                self.assertAlmostEqual(df.loc[date, 'sumPctChgclose_3'], (df.loc[date + pd.Timedelta(days=3), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=4), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=5), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=6), 'pctChgclose']))
+                self.assertAlmostEqual(df.loc[date, 'sumPctChgclose_4'], (df.loc[date + pd.Timedelta(days=4), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=5), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=6), 'pctChgclose']))
+                self.assertAlmostEqual(df.loc[date, 'sumPctChgclose_5'], (df.loc[date + pd.Timedelta(days=5), 'pctChgclose'] + df.loc[date + pd.Timedelta(days=6), 'pctChgclose']))
+
 
     
     ## Class Methods
@@ -96,8 +180,21 @@ class TestStockDataSet(unittest.TestCase):
             - The length of stockDataSet.dfs[i] = len(self.tickers[i]) for all i in range(len(self.tickers))
             - stockDataSet.cols = ['open', 'high', 'low', 'close', 'volume']
         '''
-        self.assertIsNotNone(self.stockDataSet)
+        #create dataset
         self.stockDataSet.create_dataset()
+
+        #Test that the dataset is not None
+        self.assertTrue(self.stockDataSet.dfs)
+
+        #Test that the length of stockDataSet.tickers is equal to the length of self.tickers
+        self.assertEqual(len(self.stockDataSet.tickers), len(self.tickers))
+
+        #Test each datafram is not empty and contains the correct columns
+        expected_columns = ['open', 'high', 'low', 'close', 'volume']
+        for df in self.stockDataSet.dfs:
+            self.assertFalse(df.empty)
+            for col in expected_columns:
+                self.assertIn(col, df.columns)
     
     
     def test_create_features(self):
@@ -140,6 +237,21 @@ class TestStockDataSet(unittest.TestCase):
             - train and test sets are not empty 
             - The last date in the training set happens before the first day in the test set 
         '''
+        #create dataset and features
+        self.stockDataSet.create_dataset()
+        self.stockDataSet.create_features()
+
+        #split data
+        self.stockDataSet.train_test_split()
+        training_percent = 0.8
+
+        #Test that the train and test sets are not empty and are split correctly
+        self.assertFalse(self.stockDataSet.training_dfs[0].empty)
+        self.assertFalse(self.stockDataSet.test_dfs[0].empty)
+        self.assertEqual(self.stockDataSet.training_dfs[0].index[-1] + pd.Timedelta(days=1), self.stockDataSet.test_dfs[0].index[0])
+        self.assertEqual(len(self.stockDataSet.training_dfs[0]), int(len(self.stockDataSet.dfs[0]) * training_percent))
+        self.assertEqual(len(self.stockDataSet.test_dfs[0]), len(self.stockDataSet.dfs[0]) - int(len(self.stockDataSet.dfs[0]) * training_percent))
+
     
     def scale_quant_min_max(self):
         '''
@@ -153,7 +265,46 @@ class TestStockDataSet(unittest.TestCase):
             - The scaler is saved in feature_set.scaler and inverse transforming with the scaler returns original values (close to)
                 - test this for a few random rows in the dataframe
         '''
-        pass
+        #create dataset and features and split data
+        self.stockDataSet.create_dataset()
+        self.stockDataSet.create_features()
+        self.stockDataSet.train_test_split()
+
+        #Identify features that will be scaled
+        quant_minmax_features = []
+        for feature in self.stockDataSet.X_feature_sets[0]:
+            if feature.scalingMethod == 'QUANT_MINMAX':
+                quant_minmax_features.append(feature)
+        
+        #Save a copy of the training and test sets before scaling
+        training_df = self.stockDataSet.training_dfs[0].copy()
+        test_df = self.stockDataSet.test_dfs[0].copy()
+
+        #Scale the data
+        self.stockDataSet.scale_quant_min_max()
+
+        #Test scaling and inverse scaling
+        for feature in quant_minmax_features:
+            #Test that all values are scaled between -1 and 1
+            self.assertTrue(self.stockDataSet.training_dfs[0][feature].max() <= 1)
+            self.assertTrue(self.stockDataSet.training_dfs[0][feature].min() >= -1)
+            self.assertTrue(self.stockDataSet.test_dfs[0][feature].max() <= 1)
+            self.assertTrue(self.stockDataSet.test_dfs[0][feature].min() >= -1)
+
+            #Test that the number of instances > 0 and < 0 are the same before and after scaling
+            self.assertEqual(len(training_df[training_df[feature] > 0]), len(self.stockDataSet.training_dfs[0][self.stockDataSet.training_dfs[0][feature] > 0]))
+            self.assertEqual(len(training_df[training_df[feature] < 0]), len(self.stockDataSet.training_dfs[0][self.stockDataSet.training_dfs[0][feature] < 0]))
+            self.assertEqual(len(test_df[test_df[feature] > 0]), len(self.stockDataSet.test_dfs[0][self.stockDataSet.test_dfs[0][feature] > 0]))
+            self.assertEqual(len(test_df[test_df[feature] < 0]), len(self.stockDataSet.test_dfs[0][self.stockDataSet.test_dfs[0][feature] < 0]))
+
+            #Test that the scaler is saved in feature_set.scaler and inverse transforming with the scaler returns original values (close to)
+            #test this for a few random rows in the dataframe
+            for i in range(5):
+                random_row = random.randint(0, len(training_df))
+                self.assertAlmostEqual(training_df.loc[random_row, feature], self.stockDataSet.training_dfs[0].loc[random_row, feature])
+                random_row = random.randint(0, len(test_df))
+                self.assertAlmostEqual(test_df.loc[random_row, feature], self.stockDataSet.test_dfs[0].loc[random_row, feature])
+        
 
 
     def test_create_target(self):
@@ -178,7 +329,7 @@ class TestStockDataSet(unittest.TestCase):
 
         # Pull out one of the data frames as a copy to test passing into non class functions is the same as calling create_features method
         df_test = self.stockDataSet.dfs[0].copy()
-        df_test = TSPP.add_forward_rolling_sum(df_test)
+        df_test = TSPP.add_forward_rolling_sums(df_test)
 
         self.stockDataSet.create_features()
 
@@ -200,9 +351,29 @@ class TestStockDataSet(unittest.TestCase):
             - X_feature_sets and y_feature_sets contain the correct values (again in group_param variable)
             - training_dfs and test_dfs all contain the correct columns as seen in X_col, y_col 
         '''
+        #run the preprocess pipeline
+        self.stockDataSet.preprocess_pipeline()
+
+        #check that the training and test sets are not empty
+        for training_df in self.stockDataSet.training_dfs:
+            self.assertFalse(training_df.empty)
+        for test_df in self.stockDataSet.test_dfs:
+            self.assertFalse(test_df.empty)
         
+        #Check that the group_param variable contains the correct X_col, y_col values
+        self.assertEqual(self.stockDataSet.group_params.X_cols, self.stockDataSet.X_feature_sets)
+        self.assertEqual(self.stockDataSet.group_params.y_cols, self.stockDataSet.y_feature_sets)
+
+        #Check that the training and test sets all contain the correct columns as seen in X_col, y_col
+        for training_df in self.stockDataSet.training_dfs:
+            for col in self.stockDataSet.X_feature_sets:
+                self.assertIn(col, training_df.columns)
+            for col in self.stockDataSet.y_feature_sets:
+                self.assertIn(col, training_df.columns)
 
 
-    
+
+if __name__ == '__main__':
+    unittest.main()
 
 
