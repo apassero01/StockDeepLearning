@@ -5,7 +5,7 @@ from datetime import datetime, timedelta
 import yfinance as yf
 from SequencePreprocessing import StockSequenceSet 
 from SequencePreprocessing import ScalingMethod as ScalingMethod
-from ClusterProcessing import ClusterGroupParams, StockClusterGroupParams
+# from ClusterProcessing import ClusterGroupParams, StockClusterGroupParams
 from sklearn.preprocessing import (
     MinMaxScaler,
     StandardScaler,
@@ -20,7 +20,8 @@ class FeatureSet:
     Class that encapsulates a set of features. A set of features is a subset of the columns in a Dateset object. 
     This is helpful for keeping track of different requirements for different groups of features
     """
-    def __init__(self, scaling_method, scale_range = (-1,1)):
+    def __init__(self, scaling_method, name ='', scale_range = (-1,1)):
+        self.name = name
         self.cols = []
         self.scaling_method = scaling_method
 
@@ -35,7 +36,7 @@ class DataSet:
     Class to encapsuate a dataset. The dataset is essentially a list of dataframes of the
     same shape and size with the same features.
     """
-    def __init__(self,group_params: ClusterGroupParams):
+    def __init__(self,group_params):
         self.dfs = []
         self.df = pd.DataFrame()
         self.group_params = group_params
@@ -48,6 +49,8 @@ class DataSet:
         self.created_dataset = False
         self.created_features = False
         self.created_y_targets = False
+
+        self.scaling_dict = group_params.scaling_dict
     
     def initialize_group_params(self):
         self.group_params.X_cols = set() 
@@ -94,8 +97,43 @@ class StockDataSet(DataSet):
     In the case of stocks this is 1 or more stock dataframes that are combined into one dataset
     """
 
-    def __init__(self, group_params: StockClusterGroupParams, interval="1d"):
+    def __init__(self, group_params, interval="1d"):
         super().__init__(group_params)
+    
+    def preprocess_pipeline(self):
+        """
+        Preprocess the dataset
+        """
+        if not self.created_dataset:
+            self.create_dataset()
+            if len(self.dfs) < 0 :
+                raise ValueError("No dataframes created")
+        if not self.created_features:
+            self.create_features()
+            if len(self.group_params.X_cols) < 0:
+                raise ValueError("No features created")
+        
+        if not self.created_y_targets:
+            self.create_y_targets(self.group_params.target_cols)
+
+        self.train_test_split()
+
+        if self.training_dfs is None or len(self.training_dfs) < 1: 
+            raise ValueError("training_set is None")
+        if self.test_dfs is None or len(self.test_dfs) < 1:
+            raise ValueError("test_set is None")
+
+        quant_min_max_feature_sets = [feature_set for feature_set in self.group_params.X_feature_sets if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX.value or feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX_G.value] 
+        quant_min_max_feature_sets += [feature_set for feature_set in self.group_params.y_feature_sets if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX.value or feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX_G.value]
+
+        if len(quant_min_max_feature_sets) > 0:
+            self.training_dfs, self.test_dfs = self.scale_quant_min_max(quant_min_max_feature_sets, self.training_dfs, self.test_dfs)
+        
+        
+        if self.group_params.X_feature_sets is None: 
+            raise ValueError("X_feature_sets is None")
+        if self.group_params.y_feature_sets is None:
+            raise ValueError("y_feature_sets is None")
 
     def create_dataset(self):
         """
@@ -114,26 +152,6 @@ class StockDataSet(DataSet):
         self.update_total_df()
 
         self.created_dataset = True
-    
-    def preprocess_pipeline(self):
-        """
-        Preprocess the dataset
-        """
-        if not self.created_dataset:
-            self.create_dataset()
-        if not self.created_features:
-            self.create_features()
-
-        self.train_test_split()
-
-        x_quant_min_max_feature_sets = [feature_set for feature_set in self.group_params.X_feature_sets if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX.value] 
-
-        if len(x_quant_min_max_feature_sets) > 0:
-            self.training_dfs, self.test_dfs = self.scale_quant_min_max(x_quant_min_max_feature_sets, self.training_dfs, self.test_dfs)
-
-        
-        if not self.created_y_targets:
-            self.create_y_targets(self.group_params.target_cols)
 
     def create_features(self):
         """
@@ -147,24 +165,36 @@ class StockDataSet(DataSet):
 
         # Create price features
         for i in range(len(self.dfs)):
-            df, feature_set = create_price_vars(self.dfs[i])
+            df, feature_set = create_price_vars(self.dfs[i],scaling_method=self.scaling_dict['price_vars'])
             self.dfs[i] = df
         X_feature_sets.append(feature_set)
         X_cols.update(feature_set.cols)
 
         # Create trend features
         for i in range(len(self.dfs)):
-            df, feature_set = create_trend_vars(self.dfs[i])
+            df, feature_set = create_trend_vars(self.dfs[i],scaling_method=self.scaling_dict['trend_vars'])
             self.dfs[i] = df
         X_feature_sets.append(feature_set)
         X_cols.update(feature_set.cols)
 
         # Create percent change variables 
         for i in range(len(self.dfs)):
-            df, feature_set = create_pctChg_vars(self.dfs[i])
+            df, feature_set = create_pctChg_vars(self.dfs[i],scaling_method=self.scaling_dict['pctChg_vars'])
             self.dfs[i] = df
         X_feature_sets.append(feature_set)
         X_cols.update(feature_set.cols)
+
+        # Create rolling sum variables
+        pctChg_cols = [col for col in X_cols if "pctChg" in col]
+        
+        for col in pctChg_cols: 
+            for i in range(len(self.dfs)):
+                df, feature_set = create_rolling_sum_vars(self.dfs[i], col, scaling_method=self.scaling_dict['rolling_vars'])
+                self.dfs[i] = df
+            X_feature_sets.append(feature_set)
+            X_cols.update(feature_set.cols)
+        
+        # print(df.tail())
 
         # Update the group params with the new feature sets and columns
         self.group_params.X_feature_sets = X_feature_sets
@@ -203,7 +233,10 @@ class StockDataSet(DataSet):
         
         #Scale the features in the feature sets
         for feature_set in feature_sets: 
-            scaler = MinMaxPercentileScaler()
+            if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX.value:
+                scaler = MinMaxPercentileScaler()
+            if feature_set.scaling_method.value == ScalingMethod.QUANT_MINMAX_G.value:
+                scaler = MinMaxPercentileScaler(scaling_mode = 'global')
             scaler.fit(combined_train_df[feature_set.cols])
 
             # After fitting the scaler to the combined training dataframe, transform the individual dataframes
@@ -218,6 +251,7 @@ class StockDataSet(DataSet):
                 test_dfs[i] = test_set
             feature_set.scaler = scaler
         
+        
         return training_dfs, test_dfs
 
     def create_y_targets(self, cols_to_create_targets):
@@ -229,13 +263,10 @@ class StockDataSet(DataSet):
         """
         if self.created_y_targets:
             return
-
-        for i in range(len(self.training_dfs)):
-            df, feature_set = add_forward_rolling_sums(self.training_dfs[i], cols_to_create_targets)
-            self.training_dfs[i] = df
-        for i in range(len(self.test_dfs)):
-            df, feature_set = add_forward_rolling_sums(self.test_dfs[i], cols_to_create_targets)
-            self.test_dfs[i] = df
+        
+        for i in range(len(self.dfs)):
+            df, feature_set = add_forward_rolling_sums(self.dfs[i], cols_to_create_targets, scaling_method=self.scaling_dict['target_vars'])
+            self.dfs[i] = df
 
         self.group_params.y_feature_sets.append(feature_set)
         self.group_params.y_cols.update(feature_set.cols)
@@ -286,12 +317,12 @@ def get_stock_data(
 
     return df, df.columns.tolist()
 
-def create_price_vars(df: pd.DataFrame,moving_average_vals = [5,10,20,30,50,100],start_lag = 1, end_lag = 1) -> (pd.DataFrame, FeatureSet):
+def create_price_vars(df: pd.DataFrame,moving_average_vals = [5,10,20,30,50,100], scaling_method = ScalingMethod.SBSG) -> (pd.DataFrame, FeatureSet):
     """
     Create price features from the OHLC data.
     """
 
-    feature_set = FeatureSet(ScalingMethod.SBSG, (-1,1))
+    feature_set = FeatureSet(scaling_method, 'price_vars',(0,1))
 
     feature_set.cols +=["open", "high", "low", "close"]
 
@@ -314,11 +345,12 @@ def create_price_vars(df: pd.DataFrame,moving_average_vals = [5,10,20,30,50,100]
 
     return df, feature_set
 
-def create_trend_vars(df: pd.DataFrame,start_lag = 1, end_lag = 1) -> (pd.DataFrame, FeatureSet):
+def create_trend_vars(df: pd.DataFrame,scaling_method = ScalingMethod.SBS) -> (pd.DataFrame, FeatureSet):
     """
     Create trend features which are made up of features that are not price features but are not percent change features.
     """
-    feature_set = FeatureSet(ScalingMethod.SBS)
+    feature_set = FeatureSet(scaling_method,'trend_vars', (0,1))
+
     feature_set.cols += ["volume"]
 
     # lag_df = create_lag_vars(df, feature_set.cols, start_lag, end_lag)
@@ -326,14 +358,13 @@ def create_trend_vars(df: pd.DataFrame,start_lag = 1, end_lag = 1) -> (pd.DataFr
     # feature_set.cols += lag_df.columns.tolist()
 
     for col in feature_set.cols:
-        # print(col)
         df[col] = df[col].fillna(df[col].mean())
 
     return df, feature_set
        
 
 def create_pctChg_vars(
-    df: pd.DataFrame, rolling_sum_windows=(1, 2, 3, 4, 5, 6), scaling_method = ScalingMethod.QUANT_MINMAX, start_lag = 1, end_lag = 1
+    df: pd.DataFrame, scaling_method = ScalingMethod.QUANT_MINMAX, start_lag = 1, end_lag = 1
 ) -> (pd.DataFrame, FeatureSet):
     """
     Create key target variables from the OHLC processed data.
@@ -355,12 +386,15 @@ def create_pctChg_vars(
     :param rolling_sum_windows: A list of summed window sizes for pctChgClCl to create, or None if not creating
     summed windows
     """
-    feature_set = FeatureSet(scaling_method)
+    df = df.copy()
+
+    feature_set = FeatureSet(scaling_method,"pctChg_vars")
 
     for column in df.columns:
         df['pctChg' + column] = df[column].pct_change() * 100.0
         feature_set.cols.append('pctChg' + column)
     df.replace([np.inf, -np.inf], 0, inplace=True)
+    
     # % jump from open to high
     df['opHi'] = (df.high - df.open) / df.open * 100.0
     feature_set.cols.append('opHi')
@@ -395,26 +429,40 @@ def create_pctChg_vars(
     df["pctChgClHi"] = np.insert(np.divide(df.high.values[1:], df.close.values[0:-1]) * 100.0 - 100.0, 0, np.nan)
     feature_set.cols.append('pctChgClHi')
 
-    if rolling_sum_windows:
-        for roll in rolling_sum_windows:
-            col_name = "sumPctChgclose_" + str(roll)
-     
-            df[col_name] = df.pctChgclose.rolling(roll).sum()
-            feature_set.cols.append(col_name)
-
-    # print(feature_set.cols)
-    # lag_df = create_lag_vars(df, feature_set.cols, start_lag, end_lag)
-    # feature_set.cols += lag_df.columns.tolist()
-    # df = pd.concat([df, lag_df], axis=1)
-    # print(lag_df.columns.tolist())
-    # print(len(lag_df.columns.tolist()))
-
     for col in feature_set.cols:
-        # print(col)
         df[col] = df[col].fillna(df[col].mean())
 
-
     return df, feature_set
+
+def create_rolling_sum_vars(df: pd.DataFrame, col_name : str, rolling_sum_windows=(1, 2, 3, 4, 5, 6), scaling_method = ScalingMethod.QUANT_MINMAX_G ) -> (pd.DataFrame, FeatureSet):
+    """
+    Create rolling sum variables for the specified column.
+
+    :param df: A data frame containing all features including the column to create rolling sums for
+    :param col_name: The column name to create rolling sums for
+    :param rolling_sum_windows: A list of summed window sizes to create
+
+    :return: The dataframe with the new columns added
+    """
+
+    if "pctChg" not in col_name:
+        raise ValueError("Column name must contain pctChg")
+    if col_name not in df.columns:
+        raise ValueError("Column name not in dataframe")
+    
+    df = df.copy()
+
+    feature_set = FeatureSet(scaling_method,col_name + "_rolling")
+
+    for roll in rolling_sum_windows:
+        new_col_name = "sum" + col_name + "_" + str(roll)
+        df[new_col_name] = df[col_name].rolling(roll).sum()
+        feature_set.cols.append(new_col_name)
+
+    for col in feature_set.cols:
+        df[col] = df[col].fillna(df[col].mean())
+
+    return df, feature_set 
 
 def create_weekday_month_cols(df):
     """
@@ -531,48 +579,106 @@ def df_train_test_split(dataset, feature_list, train_percentage = 0.8):
 
     return train, test
 
+# class MinMaxPercentileScaler(BaseEstimator, TransformerMixin):
+#     """
+#     Custom transformer that clips data to the defined percentiles and scales it between -1 and 1. This is important as zero is maintained before and after scaling. This ensures
+#     the same number of values <, = and > zero are maintained.
+#     """
+#     def __init__(self,percentile=[1,99]):
+#         self.max_abs_trimmed_ = None
+#         self.percentile = percentile
+    
+#     def fit(self, X, y=None):
+#         # Ensure we're working with a copy
+#         X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
+        
+#         # Assuming X is a DataFrame or numpy array
+#         low, high = np.percentile(X_copy, self.percentile, axis=0)  # axis=0 computes percentiles column-wise
+#         self.max_abs_trimmed_ = np.maximum(np.abs(low), np.abs(high))
+#         return self
+
+#     def transform(self, X):
+#         # Ensure we're working with a copy
+#         X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
+        
+#         # Clip data column-wise
+#         X_copy = np.clip(X_copy, -self.max_abs_trimmed_, self.max_abs_trimmed_)
+
+#         # Scale values between -1 and 1 for each column, maintaining zero
+#         pos_mask = X_copy > 0
+#         neg_mask = X_copy < 0
+        
+#         X_copy[pos_mask] = X_copy[pos_mask] / self.max_abs_trimmed_
+#         X_copy[neg_mask] = X_copy[neg_mask] / self.max_abs_trimmed_
+
+#         return X_copy
+    
+#     def inverse_transform(self, X):
+#         # Ensure we're working with a copy
+#         X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
+        
+#         # If it's a DataFrame, get the numpy array
+#         if isinstance(X_copy, pd.DataFrame):
+#             X_copy = X_copy.values  # Convert to NumPy array
+
+#         X_copy = X_copy * self.max_abs_trimmed_
+
+#         return X_copy
+
 class MinMaxPercentileScaler(BaseEstimator, TransformerMixin):
-    """
-    Custom transformer that clips data to the defined percentiles and scales it between -1 and 1. This is important as zero is maintained before and after scaling. This ensures
-    the same number of values <, = and > zero are maintained.
-    """
-    def __init__(self,percentile=[1,99]):
+    def __init__(self, percentile=[5, 95], scaling_mode='column'):
+        """
+        Custom transformer that clips data to the defined percentiles and scales it between -1 and 1. 
+        This ensures the same number of values <, = and > zero are maintained.
+        scaling_mode can be 'column' or 'global'. 
+        """
         self.max_abs_trimmed_ = None
         self.percentile = percentile
+        self.scaling_mode = scaling_mode
     
     def fit(self, X, y=None):
-        # Ensure we're working with a copy
         X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
         
-        # Assuming X is a DataFrame or numpy array
-        low, high = np.percentile(X_copy, self.percentile, axis=0)  # axis=0 computes percentiles column-wise
-        self.max_abs_trimmed_ = np.maximum(np.abs(low), np.abs(high))
+        if self.scaling_mode == 'column':
+            low, high = np.percentile(X_copy, self.percentile, axis=0)
+            # print(low, high)
+            self.max_abs_trimmed_ = np.maximum(np.abs(low), np.abs(high))
+        elif self.scaling_mode == 'global':
+            low, high = np.percentile(X_copy, self.percentile)
+            self.max_abs_trimmed_ = np.maximum(np.abs(low), np.abs(high))
+            if self.max_abs_trimmed_ == 0:
+                print("Warning: Global max absolute trimmed value is zero.")
+        else:
+            raise ValueError("Invalid scaling_mode. Choose either 'column' or 'global'.")
         return self
 
     def transform(self, X):
-        # Ensure we're working with a copy
         X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
         
-        # Clip data column-wise
-        X_copy = np.clip(X_copy, -self.max_abs_trimmed_, self.max_abs_trimmed_)
-
-        # Scale values between -1 and 1 for each column, maintaining zero
-        pos_mask = X_copy > 0
-        neg_mask = X_copy < 0
-        
-        X_copy[pos_mask] = X_copy[pos_mask] / self.max_abs_trimmed_
-        X_copy[neg_mask] = X_copy[neg_mask] / self.max_abs_trimmed_
-
+        if self.scaling_mode == 'column':
+            # Clip data column-wise
+            X_copy = np.clip(X_copy, -self.max_abs_trimmed_, self.max_abs_trimmed_)
+            pos_mask = X_copy > 0
+            neg_mask = X_copy < 0
+            X_copy[pos_mask] = X_copy[pos_mask] / self.max_abs_trimmed_
+            X_copy[neg_mask] = X_copy[neg_mask] / self.max_abs_trimmed_
+        elif self.scaling_mode == 'global':
+            # Clip data globally
+            X_copy = np.clip(X_copy, -self.max_abs_trimmed_, self.max_abs_trimmed_)
+            X_copy = X_copy / self.max_abs_trimmed_
+        else:
+            raise ValueError("Invalid scaling_mode. Choose either 'column' or 'global'.")
+            
         return X_copy
     
     def inverse_transform(self, X):
-        # Ensure we're working with a copy
         X_copy = X.copy() if isinstance(X, pd.DataFrame) else np.copy(X)
+
+        if self.scaling_mode == 'column':
+            X_copy = X_copy * self.max_abs_trimmed_
+        elif self.scaling_mode == 'global':
+            X_copy = X_copy * self.max_abs_trimmed_
+        else:
+            raise ValueError("Invalid scaling_mode. Choose either 'column' or 'global'.")
         
-        # If it's a DataFrame, get the numpy array
-        if isinstance(X_copy, pd.DataFrame):
-            X_copy = X_copy.values  # Convert to NumPy array
-
-        X_copy = X_copy * self.max_abs_trimmed_
-
         return X_copy
